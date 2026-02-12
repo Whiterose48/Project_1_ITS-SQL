@@ -66,6 +66,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   const [code, setCode] = useState('-- Write your SQL query here --');
   const [isRunning, setIsRunning] = useState(false);
   const editorRef = useRef(null);
+  const completionProviderRef = useRef(null);
 
   useEffect(() => {
     setCode('-- Write your SQL query here --');
@@ -74,30 +75,33 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   const handleEditorMount = (editor) => {
     editorRef.current = editor;
     
-    window.monaco?.languages.registerCompletionItemProvider('sql', {
-      provideCompletionItems: (model, position) => {
-        const word = model.getWordUntilPosition(position);
-        const range = {
-          startLineNumber: position.lineNumber,
-          endLineNumber: position.lineNumber,
-          startColumn: word.startColumn,
-          endColumn: word.endColumn,
-        };
+    // ลงทะเบียน autocomplete provider เพียงครั้งเดียว
+    if (!completionProviderRef.current) {
+      completionProviderRef.current = window.monaco?.languages.registerCompletionItemProvider('sql', {
+        provideCompletionItems: (model, position) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
 
-        const suggestions = SQL_KEYWORDS.map(keyword => ({
-          label: keyword.label,
-          kind: window.monaco?.languages.CompletionItemKind[keyword.kind] || 14,
-          insertText: keyword.insertText,
-          insertTextRules: window.monaco?.languages.CompletionItemInsertTextRule?.InsertAsSnippet,
-          detail: keyword.detail,
-          range: range,
-          sortText: keyword.label,
-        }));
+          const suggestions = SQL_KEYWORDS.map(keyword => ({
+            label: keyword.label,
+            kind: window.monaco?.languages.CompletionItemKind[keyword.kind] || 14,
+            insertText: keyword.insertText,
+            insertTextRules: window.monaco?.languages.CompletionItemInsertTextRule?.InsertAsSnippet,
+            detail: keyword.detail,
+            range: range,
+            sortText: keyword.label,
+          }));
 
-        return { suggestions };
-      },
-      triggerCharacters: ['S', 's', 'F', 'f', 'W', 'w', 'A', 'a', 'O', 'o', 'G', 'g', 'H', 'h', 'L', 'l', 'I', 'i', 'U', 'u', 'D', 'd', 'C', 'c', 'J', 'j'],
-    });
+          return { suggestions };
+        },
+        triggerCharacters: ['S', 's', 'F', 'f', 'W', 'w', 'A', 'a', 'O', 'o', 'G', 'g', 'H', 'h', 'L', 'l', 'I', 'i', 'U', 'u', 'D', 'd', 'C', 'c', 'J', 'j'],
+      });
+    }
   };
 
   const handleRunQuery = async () => {
@@ -117,22 +121,22 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   return (
     <div className="space-y-6">
       {/* Editor Section */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-        <div className="bg-[#000033] text-white p-5 flex items-center justify-between">
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 hover:shadow-2xl transition-shadow duration-300">
+        <div className="bg-gradient-to-r from-[#000033] to-[#0a0a2e] text-white p-5 flex items-center justify-between border-b border-slate-700/30">
           <div className="flex items-center gap-3">
             <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-400"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
-              <div className="w-3 h-3 rounded-full bg-green-400"></div>
+              <div className="w-3 h-3 rounded-full bg-red-400 shadow-lg"></div>
+              <div className="w-3 h-3 rounded-full bg-yellow-400 shadow-lg"></div>
+              <div className="w-3 h-3 rounded-full bg-green-400 shadow-lg"></div>
             </div>
-            <h3 className="text-lg font-bold tracking-wide ml-2">Code Editor</h3>
+            <h3 className="text-lg font-black tracking-widest ml-3">SQL Query Editor</h3>
           </div>
-          <span className="bg-white/20 px-4 py-1.5 rounded-xl text-sm font-black uppercase tracking-widest border border-white/10">
+          <span className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border border-blue-300/30 shadow-lg">
             SQL
           </span>
         </div>
 
-        <div className="bg-gray-950 h-[450px]"> {/* เพิ่มความสูงของ Editor เนื่องจากนำ Test Case ออก */}
+        <div className="bg-gray-950 h-[450px] relative">
           <Editor
             defaultLanguage="sql"
             value={code}
@@ -162,17 +166,18 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
       <button
         onClick={handleRunQuery}
         disabled={isRunning}
-        className="group relative w-full overflow-hidden rounded-2xl py-6 transition-all duration-300 active:scale-[0.98]"
+        className="group relative w-full overflow-hidden rounded-2xl py-6 transition-all duration-300 active:scale-[0.98] hover:shadow-2xl"
       >
-        <div className={`absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700 transition-opacity duration-300 ${isRunning ? 'opacity-50' : 'opacity-100'}`}></div>
+        <div className={`absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 transition-all duration-300 ${isRunning ? 'opacity-60' : 'opacity-100 group-hover:opacity-110'}`}></div>
+        <div className={`absolute inset-0 bg-gradient-to-t from-blue-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
         <div className="relative flex items-center justify-center gap-3">
           {isRunning ? (
             <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
           ) : (
-            <span className="text-2xl">▶</span>
+            <span className="text-2xl group-hover:scale-125 transition-transform duration-200">▶</span>
           )}
           <span className="text-white font-black text-xl uppercase tracking-widest">
-            {isRunning ? 'Submitting...' : 'Submit Answer'}
+            {isRunning ? 'Submitting...' : '✨ Submit Answer'}
           </span>
         </div>
       </button>

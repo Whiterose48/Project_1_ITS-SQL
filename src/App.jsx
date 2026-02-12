@@ -62,8 +62,31 @@ export default function App() {
   const handleSubmit = (code, language) => {
     setOverlay({ visible: true, status: 'loading', message: 'Validating your query...' });
     setTimeout(() => {
+      // เพิ่ม submission ใหม่
+      const newSubmission = {
+        code,
+        language,
+        timestamp: new Date().toLocaleString('th-TH'),
+        passed: true,
+        passedCount: 5,
+        totalTests: 5,
+        // ตัวอย่างผลลัพธ์ของ SQL query
+        queryResult: [
+          { brand_id: 1, brand_name: 'Trek', 'NULL': null },
+          { brand_id: 2, brand_name: 'Giant', 'NULL': null },
+          { brand_id: 3, brand_name: 'Specialized', 'NULL': null },
+          { brand_id: 4, brand_name: 'Cannondale', 'NULL': null },
+          { brand_id: 5, brand_name: 'Santa Cruz', 'NULL': null },
+        ],
+      };
+      setSubmissions([newSubmission, ...submissions]);
+      
       setOverlay({ visible: true, status: 'success', message: '' });
-      setTimeout(() => setOverlay({ visible: false, status: 'loading', message: '' }), 1000);
+      setTimeout(() => {
+        setOverlay({ visible: false, status: 'loading', message: '' });
+        // เปลี่ยน tab ไป 'submissions'
+        setSelectedTab('submissions');
+      }, 1000);
     }, 1500);
   };
 
@@ -92,11 +115,11 @@ export default function App() {
         </div>
 
         <StepIndicator totalSteps={5} currentStep={currentProblem} onStepChange={setCurrentProblem} />
-        <Tabs selectedTab={selectedTab} onTabChange={setSelectedTab} />
 
         <div className="grid grid-cols-3 gap-8 mt-8">
           <LeftPanel problemData={problemData} currentStep={currentProblem} />
           <div className="col-span-2 text-left">
+            <Tabs selectedTab={selectedTab} onTabChange={setSelectedTab} />
             {selectedTab === 'description' ? (
               <RightPanel problemData={problemData} currentStep={currentProblem} onSubmit={handleSubmit} />
             ) : (

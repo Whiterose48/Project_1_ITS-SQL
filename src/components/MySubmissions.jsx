@@ -1,4 +1,5 @@
 import React from 'react';
+import ResultTable from './ResultTable';
 
 export default function MySubmissions({ submissions, problemData }) {
   if (!submissions || submissions.length === 0) {
@@ -49,7 +50,18 @@ export default function MySubmissions({ submissions, problemData }) {
         </div>
       </div>
 
+      {/* Query Result Table */}
+      {latestSubmission.queryResult && (
+        <div>
+          <h3 className="text-2xl font-black text-slate-900 mb-5 flex items-center">
+            <span className="text-3xl mr-3">📊</span> Query Result
+          </h3>
+          <ResultTable data={latestSubmission.queryResult} />
+        </div>
+      )}
+
       {/* Test Cases Section */}
+      {latestSubmission.testCases && latestSubmission.testCases.length > 0 && (
       <div>
         <h3 className="text-xl font-black text-gray-800 mb-4 flex items-center">
           <span className="mr-2">🧪</span> Test Cases:
@@ -97,6 +109,7 @@ export default function MySubmissions({ submissions, problemData }) {
           ))}
         </div>
       </div>
+      )}
 
       {/* Hint if Failed */}
       {!latestSubmission.passed && latestSubmission.hint && (
