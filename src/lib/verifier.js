@@ -8,20 +8,55 @@ import { dbManager } from './db-manager.js';
 export class Verifier {
     async verify(studentQuery, goldenQuery) {
         try {
+            // Normalize queries - remove semicolons and extra whitespace
+            const normalizeQuery = (query) => {
+                return query
+                    .trim()
+                    .replace(/;+\s*$/, '') // Remove trailing semicolons
+                    .replace(/\s+/g, ' '); // Normalize whitespace
+            };
+
+            const normalizedStudent = normalizeQuery(studentQuery);
+            const normalizedGolden = normalizeQuery(goldenQuery);
+
+            console.log('🔍 Verifying query...');
+            console.log('📝 Student:', normalizedStudent);
+            console.log('⭐ Golden:', normalizedGolden);
+
             // Execute both queries
-            const goldenResult = await dbManager.executeQuery(goldenQuery);
-            const studentResult = await dbManager.executeQuery(studentQuery);
+            const goldenResult = await dbManager.executeQuery(normalizedGolden);
+            const studentResult = await dbManager.executeQuery(normalizedStudent);
+
+            console.log('📊 Golden result:', goldenResult.rows.length, 'rows');
+            console.log('📊 Student result:', studentResult.rows.length, 'rows');
 
             // Compare results
             const comparison = this.compareResults(studentResult, goldenResult);
             
-            return {
+            console.log('✓ Comparison result:', comparison.isMatch);
+            console.log('   Details:', {
+                columnCountMatch: comparison.columnCountMatch,
+                columnNamesMatch: comparison.columnNamesMatch,
+                rowCountMatch: comparison.rowCountMatch,
+                dataMatch: comparison.dataMatch
+            });
+            
+            const result = {
                 success: comparison.isMatch,
                 studentResult,
                 goldenResult,
                 comparison
             };
+            console.log('🎯 Verifier returning:', {
+                success: result.success,
+                studentResult: {
+                    columns: result.studentResult?.columns?.length,
+                    rows: result.studentResult?.rows?.length
+                }
+            });
+            return result;
         } catch (error) {
+            console.error('❌ Verification error:', error);
             return {
                 success: false,
                 error: error.message,
@@ -82,15 +117,43 @@ export class Verifier {
             return true;
         }
 
-        // For simplicity, we'll do order-dependent comparison first
-        // In a more advanced version, we could do order-independent comparison for certain queries
-        
+        if (studentResult.rows.length !== goldenResult.rows.length) {
+            return false;
+        }
+
         try {
-            // Convert both to sorted JSON strings for comparison
-            const studentStr = JSON.stringify(this.sortRows(studentResult.rows, studentResult.columns));
-            const goldenStr = JSON.stringify(this.sortRows(goldenResult.rows, goldenResult.columns));
-            
-            return studentStr === goldenStr;
+            // Normalize and compare rows
+            // Handle NULL values and numeric conversions
+            const normalizeRow = (row) => {
+                const normalized = {};
+                for (const key in row) {
+                    let val = row[key];
+                    // Convert null/undefined to string
+                    if (val === null || val === undefined) {
+                        normalized[key] = 'NULL';
+                    } else if (typeof val === 'number') {
+                        normalized[key] = val.toString();
+                    } else {
+                        normalized[key] = String(val).trim();
+                    }
+                }
+                return normalized;
+            };
+
+            // Normalize all rows
+            const normalizedStudent = studentResult.rows.map(normalizeRow);
+            const normalizedGolden = goldenResult.rows.map(normalizeRow);
+
+            // Sort for order-independent comparison
+            const sortRows = (rows) => {
+                return [...rows].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+            };
+
+            const sortedStudent = sortRows(normalizedStudent);
+            const sortedGolden = sortRows(normalizedGolden);
+
+            // Compare
+            return JSON.stringify(sortedStudent) === JSON.stringify(sortedGolden);
         } catch (error) {
             console.error('Data comparison error:', error);
             return false;

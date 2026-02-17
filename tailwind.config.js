@@ -11,6 +11,10 @@ export default {
         'gradient-start': '#1e3a8a',
         'gradient-end': '#ff8c00',
       },
+      // ✨ เพิ่ม Custom Animation สำหรับ AI Bot ตรงนี้
+      animation: {
+        'bounce-slow': 'bounce 3s infinite',
+      },
     },
   },
   plugins: [],

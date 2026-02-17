@@ -107,36 +107,43 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   const handleRunQuery = async () => {
     setIsRunning(true);
     try {
-      setTimeout(() => {
-        if (onSubmit) {
-          onSubmit(code, 'sql');
-        }
-        setIsRunning(false);
-      }, 1000);
+      if (onSubmit) {
+        await onSubmit(code, 'sql');
+      }
+      setIsRunning(false);
     } catch (error) {
+      console.error('Submit error:', error);
       setIsRunning(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Editor Section */}
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 hover:shadow-2xl transition-shadow duration-300">
-        <div className="bg-gradient-to-r from-[#000033] to-[#0a0a2e] text-white p-5 flex items-center justify-between border-b border-slate-700/30">
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-400 shadow-lg"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-400 shadow-lg"></div>
-              <div className="w-3 h-3 rounded-full bg-green-400 shadow-lg"></div>
+      {/* Editor Section - 2D Flat Design */}
+      <div className="bg-[#0f172a] rounded-xl overflow-hidden border-[3px] border-slate-800 shadow-[6px_6px_0px_0px_#1e293b] transition-all">
+        
+        {/* Flat Header */}
+        <div className="bg-slate-800 text-white p-4 flex items-center justify-between border-b-[3px] border-slate-900">
+          <div className="flex items-center gap-4">
+            {/* 2D Window Controls - เปลี่ยนวงกลมเป็นสี่เหลี่ยมบล็อกๆ */}
+            <div className="flex gap-2">
+              <div className="w-3.5 h-3.5 bg-red-500 border-2 border-slate-900 rounded-sm"></div>
+              <div className="w-3.5 h-3.5 bg-yellow-400 border-2 border-slate-900 rounded-sm"></div>
+              <div className="w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-sm"></div>
             </div>
-            <h3 className="text-lg font-black tracking-widest ml-3">SQL Query Editor</h3>
+            <h3 className="text-lg font-black tracking-widest ml-2 font-mono uppercase text-slate-200">
+              Query Editor
+            </h3>
           </div>
-          <span className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest border border-blue-300/30 shadow-lg">
+          
+          {/* 2D Badge */}
+          <span className="bg-blue-600 px-3 py-1 rounded border-2 border-slate-900 text-xs font-black uppercase tracking-widest shadow-[2px_2px_0px_0px_#020617]">
             SQL
           </span>
         </div>
 
-        <div className="bg-gray-950 h-[450px] relative">
+        {/* Monaco Editor Container */}
+        <div className="h-[450px] relative p-2">
           <Editor
             defaultLanguage="sql"
             value={code}
@@ -147,7 +154,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
               minimap: { enabled: false },
               fontSize: 16,
               fontFamily: '"Fira Code", "JetBrains Mono", monospace',
-              padding: { top: 20, bottom: 20 },
+              padding: { top: 16, bottom: 16 },
               scrollBeyondLastLine: false,
               lineHeight: 24,
               quickSuggestions: { other: true, comments: false, strings: false },
@@ -162,24 +169,23 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
         </div>
       </div>
 
-      {/* Submit Button */}
+      {/* 2D Solid Submit Button */}
       <button
         onClick={handleRunQuery}
         disabled={isRunning}
-        className="group relative w-full overflow-hidden rounded-2xl py-6 transition-all duration-300 active:scale-[0.98] hover:shadow-2xl"
+        className="w-full flex items-center justify-center gap-3 py-5 font-black text-xl tracking-widest uppercase transition-all duration-200 rounded-xl border-[3px] border-[#000066] bg-blue-600 text-white shadow-[6px_6px_0px_0px_#000066] hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[8px_8px_0px_0px_#000066] active:translate-y-[4px] active:translate-x-[4px] active:shadow-none disabled:opacity-75 disabled:cursor-not-allowed disabled:active:translate-y-0 disabled:active:translate-x-0 disabled:active:shadow-[6px_6px_0px_0px_#000066]"
       >
-        <div className={`absolute inset-0 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 transition-all duration-300 ${isRunning ? 'opacity-60' : 'opacity-100 group-hover:opacity-110'}`}></div>
-        <div className={`absolute inset-0 bg-gradient-to-t from-blue-900/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
-        <div className="relative flex items-center justify-center gap-3">
-          {isRunning ? (
-            <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-          ) : (
-            <span className="text-2xl group-hover:scale-125 transition-transform duration-200">▶</span>
-          )}
-          <span className="text-white font-black text-xl uppercase tracking-widest">
-            {isRunning ? 'Submitting...' : '✨ Submit Answer'}
-          </span>
-        </div>
+        {isRunning ? (
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+            <span>Submitting...</span>
+          </div>
+        ) : (
+          <>
+            <span className="text-2xl drop-shadow-sm">▶</span>
+            <span className="drop-shadow-sm">Submit Answer</span>
+          </>
+        )}
       </button>
     </div>
   );

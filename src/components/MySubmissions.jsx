@@ -4,9 +4,13 @@ import ResultTable from './ResultTable';
 export default function MySubmissions({ submissions, problemData }) {
   if (!submissions || submissions.length === 0) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-10">
-        <p className="text-gray-400 text-center py-12 text-xl font-medium">
-          No submissions yet. Submit your first solution!
+      <div className="bg-white rounded-xl border-[3px] border-slate-800 shadow-[8px_8px_0px_0px_#1e293b] p-10 flex flex-col items-center justify-center min-h-[300px]">
+        <div className="text-6xl mb-4 drop-shadow-md">👾</div>
+        <p className="text-slate-500 text-center text-xl font-black uppercase tracking-widest">
+          No submissions yet.
+        </p>
+        <p className="text-slate-400 font-bold mt-2">
+          Submit your first solution to see the results!
         </p>
       </div>
     );
@@ -14,111 +18,91 @@ export default function MySubmissions({ submissions, problemData }) {
 
   const latestSubmission = submissions[0];
 
+  // ✨ ตรวจสอบ Semicolon (;) จากโค้ดที่ส่งมา
+  const hasSemicolon = latestSubmission.code.trim().endsWith(';');
+  
+  // ✨ Override สถานะ: จะผ่านได้ก็ต่อเมื่อระบบตรวจว่าผ่าน (passed) "และ" ต้องมี Semicolon ปิดท้าย
+  const isPassed = latestSubmission.passed && hasSemicolon;
+
+  // ✨ จัดการคำใบ้: ถ้าโค้ดทำงานถูกแต่ลืมใส่ ; ให้แสดงคำใบ้แจ้งเตือนเฉพาะเจาะจง
+  const displayHint = (!hasSemicolon && latestSubmission.passed) 
+    ? "Syntax Error: SQL queries must end with a semicolon (;). Please check your code and try again." 
+    : latestSubmission.hint;
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Test Status Header */}
-      <div className={`rounded-2xl p-6 border-l-[6px] shadow-sm ${
-        latestSubmission.passed 
-          ? 'bg-green-50 border-green-500' 
-          : 'bg-red-50 border-red-500'
+      {/* --- Test Status Header --- */}
+      <div className={`rounded-xl p-8 border-[3px] border-slate-900 shadow-[8px_8px_0px_0px_#0f172a] relative overflow-hidden ${
+        isPassed 
+          ? 'bg-[#10B981]' 
+          : 'bg-[#EF4444]'
       }`}>
-        <div className="flex items-center">
-          <span className="text-4xl mr-5">
-            {latestSubmission.passed ? '✅' : '❌'}
-          </span>
-          <div>
-            <h3 className={`text-2xl font-black mb-1 ${
-              latestSubmission.passed ? 'text-green-800' : 'text-red-800'
-            }`}>
-              {latestSubmission.passed ? 'All Tests Passed!' : 'Some Tests Failed'}
-            </h3>
-            <p className="text-lg font-bold text-gray-600">
-              {latestSubmission.passedCount} / {latestSubmission.totalTests} test cases passed
-            </p>
+        <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,1)_25%,rgba(255,255,255,1)_50%,transparent_50%,transparent_75%,rgba(255,255,255,1)_75%,rgba(255,255,255,1)_100%)] bg-[length:20px_20px]"></div>
+        
+        <div className="relative flex items-center justify-between z-10">
+          <div className="flex items-center">
+            {/* ✨ ใช้ค่า isPassed แทน latestSubmission.passed */}
+            <div className="bg-white border-[3px] border-slate-900 w-20 h-20 rounded-2xl flex items-center justify-center text-5xl shadow-[4px_4px_0px_0px_#0f172a] mr-8 rotate-[-3deg]">
+              {isPassed ? '🏆' : '💥'}
+            </div>
+            <div>
+              <h3 className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-[3px_3px_0px_#000]">
+                {isPassed ? 'QUERY PASSED!' : 'QUERY FAILED'}
+              </h3>
+            </div>
+          </div>
+          
+          <div className={`hidden lg:flex px-6 py-3 font-black text-2xl uppercase tracking-widest border-[3px] border-slate-900 shadow-[4px_4px_0px_0px_#0f172a] rotate-[3deg] ${
+             isPassed ? 'bg-yellow-400 text-slate-900' : 'bg-slate-900 text-red-500'
+          }`}>
+            {isPassed ? 'SUCCESS' : 'ERROR'}
           </div>
         </div>
       </div>
 
       {/* Your Code Section */}
       <div>
-        <h3 className="text-xl font-black text-gray-800 mb-4 flex items-center">
-          <span className="mr-2">📝</span> Your Code:
-        </h3>
-        <div className="bg-[#0f172a] text-green-400 p-6 rounded-2xl font-mono text-[17px] leading-relaxed shadow-inner border border-slate-800 overflow-x-auto custom-scrollbar">
-          <pre className="whitespace-pre-wrap">{latestSubmission.code}</pre>
+        <div className="inline-flex items-center gap-3 bg-blue-600 text-white px-5 py-2.5 border-[3px] border-slate-900 shadow-[4px_4px_0px_0px_#0f172a] mb-6 rounded-lg">
+          <span className="text-xl">📝</span>
+          <h3 className="text-lg font-black uppercase tracking-widest">Your Code</h3>
+        </div>
+        
+        <div className="bg-[#0f172a] p-6 rounded-xl border-[3px] border-slate-800 shadow-[6px_6px_0px_0px_#1e293b] relative">
+          <div className="absolute top-4 right-4 flex gap-2">
+             <div className="w-3 h-3 bg-red-500 border-2 border-slate-900 rounded-sm"></div>
+             <div className="w-3 h-3 bg-yellow-400 border-2 border-slate-900 rounded-sm"></div>
+             <div className="w-3 h-3 bg-emerald-500 border-2 border-slate-900 rounded-sm"></div>
+          </div>
+          <pre className="font-mono text-emerald-400 text-[17px] leading-relaxed whitespace-pre-wrap mt-2">{latestSubmission.code}</pre>
         </div>
       </div>
 
       {/* Query Result Table */}
-      {latestSubmission.queryResult && (
+      {latestSubmission.queryResult && latestSubmission.queryResult.rows && (
         <div>
-          <h3 className="text-2xl font-black text-slate-900 mb-5 flex items-center">
-            <span className="text-3xl mr-3">📊</span> Query Result
-          </h3>
-          <ResultTable data={latestSubmission.queryResult} />
+          <div className="inline-flex items-center gap-3 bg-purple-600 text-white px-5 py-2.5 border-[3px] border-slate-900 shadow-[4px_4px_0px_0px_#0f172a] mb-6 rounded-lg">
+            <span className="text-xl">📊</span>
+            <h3 className="text-lg font-black uppercase tracking-widest">Query Result</h3>
+          </div>
+          <div className="border-[3px] border-slate-800 rounded-xl shadow-[6px_6px_0px_0px_#1e293b] overflow-hidden bg-white">
+            <ResultTable data={latestSubmission.queryResult.rows} />
+          </div>
         </div>
       )}
 
-      {/* Test Cases Section */}
-      {latestSubmission.testCases && latestSubmission.testCases.length > 0 && (
-      <div>
-        <h3 className="text-xl font-black text-gray-800 mb-4 flex items-center">
-          <span className="mr-2">🧪</span> Test Cases:
-        </h3>
-        <div className="space-y-4">
-          {latestSubmission.testCases.map((testCase, idx) => (
-            <div
-              key={idx}
-              className={`border-l-[5px] pl-6 py-5 rounded-2xl shadow-sm transition-all hover:translate-x-1 ${
-                testCase.passed
-                  ? 'bg-white border-green-500 ring-1 ring-green-100'
-                  : 'bg-white border-red-500 ring-1 ring-red-100'
-              }`}
-            >
-              <div className="flex items-center mb-4">
-                <span className={`text-xl mr-3 font-black ${testCase.passed ? 'text-green-600' : 'text-red-600'}`}>
-                  {testCase.passed ? '✓' : '✗'}
-                </span>
-                <p className={`text-lg font-black uppercase tracking-wide ${
-                  testCase.passed ? 'text-green-700' : 'text-red-700'
-                }`}>
-                  Test Case {idx + 1}: {testCase.passed ? 'Passed' : 'Failed'}
-                </p>
-              </div>
-
-              <div className="space-y-3 px-2">
-                <div className="text-[16px] leading-relaxed">
-                  <p className="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Input</p>
-                  <p className="text-gray-800 font-semibold bg-gray-50 p-2 rounded border border-gray-100">{testCase.input}</p>
-                </div>
-                
-                <div className="text-[16px] leading-relaxed">
-                  <p className="text-gray-500 font-bold uppercase text-xs tracking-widest mb-1">Expected Output</p>
-                  <p className="text-gray-800 font-semibold bg-gray-50 p-2 rounded border border-gray-100">{testCase.expectedOutput}</p>
-                </div>
-
-                {!testCase.passed && (
-                  <div className="text-[16px] leading-relaxed animate-in slide-in-from-left-2">
-                    <p className="text-red-500 font-bold uppercase text-xs tracking-widest mb-1">Your Output</p>
-                    <p className="text-red-600 font-bold bg-red-50 p-2 rounded border border-red-100">{testCase.actualOutput}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      )}
-
-      {/* Hint if Failed */}
-      {!latestSubmission.passed && latestSubmission.hint && (
-        <div className="bg-orange-50 border-l-[6px] border-orange-400 p-6 rounded-2xl shadow-sm">
-          <p className="text-xl font-black text-orange-800 mb-2 flex items-center">
-            <span className="mr-2">💡</span> Hint:
-          </p>
-          <p className="text-orange-700 text-lg font-medium leading-relaxed">
-            {latestSubmission.hint}
+      {/* Hint if Failed (Dialog Style) */}
+      {/* ✨ แสดงคำใบ้โดยอิงจากค่า isPassed ที่ผ่านการเช็ค Semicolon แล้ว */}
+      {!isPassed && displayHint && (
+        <div className="bg-[#FFD700] border-[3px] border-slate-900 p-8 rounded-2xl shadow-[8px_8px_0px_0px_#0f172a] relative mt-10">
+          <div className="absolute -top-6 -left-6 w-14 h-14 bg-white border-[3px] border-slate-900 rounded-2xl flex items-center justify-center text-3xl shadow-[4px_4px_0px_0px_#000] animate-bounce">
+            💡
+          </div>
+          <h4 className="text-2xl font-black text-slate-900 mb-4 uppercase tracking-widest ml-6">
+            Bot_Suggestion
+          </h4>
+          <p className="text-slate-900 text-xl font-bold leading-relaxed ml-6 border-l-[6px] border-slate-900 pl-6 bg-white/40 py-4 rounded-r-xl">
+            {displayHint}
           </p>
         </div>
       )}
