@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 export default function Login({ onLogin, onClose }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  // ✨ State สำหรับการเปิด-ปิดรหัสผ่าน
+  const [showPassword, setShowPassword] = useState(false);
   
-  // ✨ State สำหรับระบบ Typing Effect หลายภาษา
+  // State สำหรับระบบ Typing Effect หลายภาษา
   const [displayText, setDisplayText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [loopNum, setLoopNum] = useState(0);
@@ -76,6 +78,8 @@ export default function Login({ onLogin, onClose }) {
           <div className="p-10 space-y-8">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="space-y-5">
+                
+                {/* Username Input */}
                 <div className="space-y-2 text-left">
                   <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                     <span className="text-[#FF9900]">●</span> Student ID
@@ -89,18 +93,44 @@ export default function Login({ onLogin, onClose }) {
                     required
                   />
                 </div>
+
+                {/* Password Input */}
                 <div className="space-y-2 text-left">
                   <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                     <span className="text-[#000066]">●</span> Password
                   </label>
-                  <input 
-                    type="password" 
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-slate-50 border-[4px] border-slate-900 p-5 rounded-2xl font-black text-lg text-slate-900 placeholder:text-slate-300 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#FF9900]/20 focus:border-[#FF9900] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]"
-                    required
-                  />
+                  {/* ✨ เพิ่ม Container แบบ relative เพื่อให้ปุ่มลูกตาซ้อนอยู่ด้านใน */}
+                  <div className="relative">
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="••••••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      // ✨ เพิ่ม pr-14 (Padding Right) เพื่อไม่ให้ข้อความพิมพ์ไปทับไอคอนลูกตา
+                      className="w-full bg-slate-50 border-[4px] border-slate-900 p-5 pr-14 rounded-2xl font-black text-lg text-slate-900 placeholder:text-slate-300 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#FF9900]/20 focus:border-[#FF9900] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]"
+                      required
+                    />
+                    {/* ✨ ปุ่มไอคอนลูกตา (Eye Toggle Button) */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#FF9900] transition-colors duration-200"
+                    >
+                      {showPassword ? (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+                          <line x1="2" y1="2" x2="22" y2="22"/>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
               <button 
@@ -112,7 +142,6 @@ export default function Login({ onLogin, onClose }) {
             </form>
           </div>
 
-          {/* ✨ Footer Bar: เปลี่ยนเป็นระบบ Typing Greetings */}
           <div className="bg-slate-50 border-t-[4px] border-slate-900 p-6 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <span className="text-sm font-black text-slate-700 uppercase tracking-widest">
