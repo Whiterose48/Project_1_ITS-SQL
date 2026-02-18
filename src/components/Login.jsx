@@ -3,10 +3,8 @@ import React, { useState, useEffect } from 'react';
 export default function Login({ onLogin, onClose }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  // ✨ State สำหรับการเปิด-ปิดรหัสผ่าน
   const [showPassword, setShowPassword] = useState(false);
   
-  // State สำหรับระบบ Typing Effect หลายภาษา
   const [displayText, setDisplayText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [loopNum, setLoopNum] = useState(0);
@@ -79,7 +77,6 @@ export default function Login({ onLogin, onClose }) {
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="space-y-5">
                 
-                {/* Username Input */}
                 <div className="space-y-2 text-left">
                   <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                     <span className="text-[#FF9900]">●</span> Student ID
@@ -94,23 +91,19 @@ export default function Login({ onLogin, onClose }) {
                   />
                 </div>
 
-                {/* Password Input */}
                 <div className="space-y-2 text-left">
                   <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                     <span className="text-[#000066]">●</span> Password
                   </label>
-                  {/* ✨ เพิ่ม Container แบบ relative เพื่อให้ปุ่มลูกตาซ้อนอยู่ด้านใน */}
                   <div className="relative">
                     <input 
                       type={showPassword ? "text" : "password"} 
                       placeholder="••••••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      // ✨ เพิ่ม pr-14 (Padding Right) เพื่อไม่ให้ข้อความพิมพ์ไปทับไอคอนลูกตา
                       className="w-full bg-slate-50 border-[4px] border-slate-900 p-5 pr-14 rounded-2xl font-black text-lg text-slate-900 placeholder:text-slate-300 focus:outline-none focus:bg-white focus:ring-4 focus:ring-[#FF9900]/20 focus:border-[#FF9900] transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]"
                       required
                     />
-                    {/* ✨ ปุ่มไอคอนลูกตา (Eye Toggle Button) */}
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}

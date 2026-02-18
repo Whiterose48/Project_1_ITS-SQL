@@ -1,10 +1,9 @@
 /**
  * SQL Practice Problems Database
- * - type: 'COURSE' | 'ASSIGNMENT' (เชื่อมกับ Tabs)
- * - moduleId: '02' (Select) | '03' (Condition) | '05' (Join)
+ * - type: 'COURSE' | 'ASSIGNMENT' | 'EXAM' (เชื่อมกับ Tabs)
+ * - moduleId: '01' (Intro) | '02' (Select) | '03' (Condition) | '05' (Join)
  */
 
-// โครงสร้างตาราง (Table Schema) อ้างอิงจากฐานข้อมูล Bike Store
 export const dbSchema = {
   products: [
     { name: "product_id", type: "INT" }, { name: "product_name", type: "VARCHAR" }, { name: "brand_id", type: "INT" }, { name: "category_id", type: "INT" }, { name: "model_year", type: "INT" }, { name: "list_price", type: "DECIMAL" }
@@ -32,14 +31,20 @@ export const dbSchema = {
   ],
   categories: [
     { name: "category_id", type: "INT" }, { name: "category_name", type: "VARCHAR" }
+  ],
+  users: [
+    { name: "id", type: "INT" }, { name: "name", type: "VARCHAR" }
   ]
 };
 
-// ข้อมูลโจทย์ดิบ
 const rawProblems = [
   // ==========================================
   // 1. COURSE
   // ==========================================
+  // ✨ เพิ่มโจทย์จำลองให้ Module 01 (Database Fundamentals) เพื่อไม่ให้หน้าจอพัง
+  { id: 901, type: "COURSE", moduleId: "01", title: "Select All Stores (Intro)", category: "1.0 Intro", difficulty: "beginner",
+    description: "จงเขียน SQL Statement แสดงข้อมูลร้านค้าทั้งหมดเพื่อทำความเข้าใจโครงสร้างเบื้องต้น", table: "stores", goldenQuery: "SELECT * FROM stores;", starterCode: "SELECT " },
+
   // --- 1.1 Select (Module: 02) ---
   { id: 1, type: "COURSE", moduleId: "02", title: "Select All Products", category: "1.1 Select", difficulty: "beginner",
     description: "จงเขียน SQL Statement แสดงข้อมูลสินค้าทั้งหมด", table: "products", goldenQuery: "SELECT * FROM products;", starterCode: "SELECT ",
@@ -144,6 +149,10 @@ const rawProblems = [
   // ==========================================
   // 2. ASSIGNMENT
   // ==========================================
+  // ✨ เพิ่มโจทย์จำลองให้ Module 01 เพื่อไม่ให้หน้าจอพัง
+  { id: 902, type: "ASSIGNMENT", moduleId: "01", title: "Select All Brands (Intro)", category: "2.0 Intro", difficulty: "beginner",
+    description: "จงเขียนคำสั่งแสดงข้อมูลยี่ห้อสินค้าทั้งหมด", table: "brands", goldenQuery: "SELECT * FROM brands;", starterCode: "SELECT " },
+
   // --- 2.1 Select (Module: 02) ---
   { id: 37, type: "ASSIGNMENT", moduleId: "02", title: "Select All Stores", category: "2.1 Select", difficulty: "beginner",
     description: "จงเขียน SQL Statement แสดงข้อมูลร้านค้าทั้งหมด", table: "stores", goldenQuery: "SELECT * FROM stores;", starterCode: "SELECT " },
@@ -220,12 +229,36 @@ const rawProblems = [
   { id: 71, type: "ASSIGNMENT", moduleId: "05", title: "NATURAL JOIN Basic 2", category: "2.3 Join", difficulty: "intermediate",
     description: "จงเขียน SQL Statement เชื่อม Product กับ Order_items ด้วย NATURAL JOIN", table: "products", goldenQuery: "SELECT product_name, quantity, list_price, discount FROM products NATURAL JOIN order_items;", starterCode: "SELECT " },
   { id: 72, type: "ASSIGNMENT", moduleId: "05", title: "NATURAL JOIN CA", category: "2.3 Join", difficulty: "advanced",
-    description: "จงเขียน SQL Statement ลูกค้ารัฐ CA สั่งตั้งแต่ 2017 (NATURAL JOIN)", table: "orders", goldenQuery: "SELECT order_id, order_date, first_name, last_name FROM orders NATURAL JOIN customers WHERE order_date >= '2017-01-01' AND state = 'CA';", starterCode: "SELECT " }
+    description: "จงเขียน SQL Statement ลูกค้ารัฐ CA สั่งตั้งแต่ 2017 (NATURAL JOIN)", table: "orders", goldenQuery: "SELECT order_id, order_date, first_name, last_name FROM orders NATURAL JOIN customers WHERE order_date >= '2017-01-01' AND state = 'CA';", starterCode: "SELECT " },
+
+  // ==========================================
+  // 3. EXAM
+  // ==========================================
+  // --- 3.1 EXAM (Module: 01) ---
+  { id: 99, type: 'EXAM', moduleId: '01', title: 'FINAL TEST MODULE 01', category: "3.1 EXAM", difficulty: "advanced",
+    description: 'เลือกข้อมูลทั้งหมดในตาราง', table: 'users', goldenQuery: 'SELECT * FROM users;', starterCode: "SELECT ",
+    requirements: ['ดึงข้อมูลมาทั้งหมด', 'จบคำสั่งด้วย ;'] },
+
+  // --- 3.2 EXAM (Module: 02) ---
+  { id: 100, type: 'EXAM', moduleId: '02', title: 'EXAM: SELECT DATA', category: "3.2 EXAM", difficulty: "beginner",
+    description: "แสดงชื่อนามสกุลพนักงาน โดยตั้งชื่อคอลัมน์ว่า 'Staff Name'", table: "staffs", goldenQuery: "SELECT CONCAT(first_name, ' ', last_name) AS 'Staff Name' FROM staffs;", starterCode: "SELECT " },
+  { id: 101, type: 'EXAM', moduleId: '02', title: 'EXAM: DISTINCT VALUES', category: "3.2 EXAM", difficulty: "intermediate",
+    description: "แสดงรายชื่อรัฐที่มีร้านค้าตั้งอยู่โดยไม่ซ้ำกัน", table: "stores", goldenQuery: "SELECT DISTINCT state FROM stores;", starterCode: "SELECT " },
+
+  // --- 3.3 EXAM (Module: 03) ---
+  { id: 102, type: 'EXAM', moduleId: '03', title: 'EXAM: FILTERING', category: "3.3 EXAM", difficulty: "intermediate",
+    description: "แสดงสินค้าที่มีราคาอยู่ระหว่าง 1000 ถึง 2000 เรียงจากแพงไปถูก", table: "products", goldenQuery: "SELECT product_name, list_price FROM products WHERE list_price BETWEEN 1000 AND 2000 ORDER BY list_price DESC;", starterCode: "SELECT " },
+  { id: 103, type: 'EXAM', moduleId: '03', title: 'EXAM: LIKE OPERATOR', category: "3.3 EXAM", difficulty: "intermediate",
+    description: "แสดงลูกค้าที่อีเมลลงท้ายด้วย @gmail.com", table: "customers", goldenQuery: "SELECT first_name, email FROM customers WHERE email LIKE '%@gmail.com';", starterCode: "SELECT " },
+
+  // --- 3.4 EXAM (Module: 05) ---
+  { id: 104, type: 'EXAM', moduleId: '05', title: 'EXAM: INNER JOIN', category: "3.4 EXAM", difficulty: "advanced",
+    description: "แสดงชื่อร้านค้าและจำนวนออเดอร์ทั้งหมดที่ร้านนั้นรับผิดชอบ", table: "orders", goldenQuery: "SELECT s.store_name, COUNT(o.order_id) FROM stores s JOIN orders o ON s.store_id = o.store_id GROUP BY s.store_name;", starterCode: "SELECT " },
+  { id: 105, type: 'EXAM', moduleId: '05', title: 'EXAM: MULTI JOIN', category: "3.4 EXAM", difficulty: "advanced",
+    description: "แสดงชื่อลูกค้าที่ซื้อสินค้าจากแบรนด์ 'Trek'", table: "orders", goldenQuery: "SELECT DISTINCT c.first_name, c.last_name FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id JOIN products p ON oi.product_id = p.product_id JOIN brands b ON p.brand_id = b.brand_id WHERE b.brand_name = 'Trek';", starterCode: "SELECT " }
 ];
 
-// ✨ แมพข้อมูล Requirements กับ Columns เข้าไปให้อัตโนมัติในทุกโจทย์
 export const problems = rawProblems.map(p => {
-  // สร้าง Requirements อัตโนมัติถ้าไม่ได้กำหนดไว้แบบเฉพาะเจาะจง 
   const reqs = p.requirements || [
     "เขียนคำสั่ง SQL ให้ถูกต้องตามหลักไวยากรณ์",
     "แสดงผลข้อมูลให้ตรงกับเงื่อนไขโจทย์ 100%",
@@ -235,7 +268,6 @@ export const problems = rawProblems.map(p => {
   return {
     ...p,
     requirements: reqs,
-    // อ้างอิงตารางจาก dbSchema ทำให้ TABLE STRUCTURE ขึ้นโชว์แล้ว!
     columns: p.table && dbSchema[p.table] ? dbSchema[p.table] : []
   };
 });

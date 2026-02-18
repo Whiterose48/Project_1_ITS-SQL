@@ -1,149 +1,149 @@
 import React, { useState, useEffect } from 'react';
 
 export default function LeftPanel({ problemData, currentStep }) {
-  const targetDateStr = '2026-03-13T10:00:00+07:00'; 
   const [timeLeft, setTimeLeft] = useState('');
 
+  // ✨ อัปเดต Timer ให้อิงจากเวลาเริ่มสอบจริง (1 ชั่วโมง)
   useEffect(() => {
     let timer;
+    const EXAM_DURATION = 60 * 60 * 1000; // 1 ชั่วโมง
+
     const calculateTimeLeft = () => {
-      const now = Math.floor(Date.now() / 1000) * 1000; 
-      const target = new Date(targetDateStr).getTime();
-      const difference = target - now;
+      const mode = localStorage.getItem('workspaceMode');
+      const modId = localStorage.getItem('workspaceModule');
+      const userData = sessionStorage.getItem('userData');
+      const userId = userData ? JSON.parse(userData).id : 'guest';
+
+      let targetTime;
+      
+      if (mode === 'EXAM') {
+         // ดึงเวลาเริ่มสอบ ถ้ามีให้นับ 1 ชม. ถ้าไม่มีก็ให้เริ่มใหม่
+         const startTime = localStorage.getItem(`exam_start_${userId}_${modId}`);
+         if (startTime) {
+             targetTime = parseInt(startTime) + EXAM_DURATION;
+         } else {
+             targetTime = Date.now() + EXAM_DURATION;
+         }
+      } else {
+         // ถ้าโหมดอื่น โชว์เวลา Mock ไว้เท่ๆ
+         targetTime = new Date('2026-03-13T10:00:00+07:00').getTime();
+      }
+
+      const currentNow = Date.now();
+      const difference = targetTime - currentNow;
 
       if (difference <= 0) {
-        setTimeLeft('0d 0h 0m 0s');
-        if (timer) clearInterval(timer);
+        setTimeLeft('00h 00m 00s'); // เวลาหมด!
         return;
       }
 
-      const d = Math.floor(difference / (1000 * 60 * 60 * 24));
       const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((difference % (1000 * 60)) / 1000);
 
-      setTimeLeft(`${d}d ${h}h ${m}m ${s}s`);
+      // เติม 0 ด้านหน้าให้เลขสวยงาม
+      const format = (val) => val.toString().padStart(2, '0');
+      
+      // ถ้าน้อยกว่า 1 วัน ไม่ต้องโชว์ Day
+      setTimeLeft(`${format(h)}h ${format(m)}m ${format(s)}s`);
     };
 
-    const startSyncTimer = () => {
-      calculateTimeLeft();
-      const msUntilNextSecond = 1000 - (Date.now() % 1000);
-      setTimeout(() => {
-        calculateTimeLeft();
-        timer = setInterval(calculateTimeLeft, 1000);
-      }, msUntilNextSecond);
-    };
-
-    startSyncTimer();
-    return () => { if (timer) clearInterval(timer); };
-  }, [targetDateStr]);
+    calculateTimeLeft();
+    timer = setInterval(calculateTimeLeft, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (!problemData) return null;
 
   return (
-    // Container หลัก: กรอบหนาและเงาเหลี่ยม
-    <div className="bg-white rounded-xl border-[3px] border-slate-800 shadow-[8px_8px_0px_0px_#1e293b] flex flex-col h-full overflow-hidden">
+    <div className="bg-white rounded-[32px] border-[4px] border-slate-900 shadow-[10px_10px_0px_0px_#000] flex flex-col h-full overflow-hidden animate-in slide-in-from-left duration-500">
       
-      {/* 1. Time Remaining Section - เปลี่ยนพื้นหลังเป็น Gradient ตามรีเควสต์ */}
-      <div className="bg-gradient-to-r from-[#DBDCFF] to-[#FFE5C4] p-6 text-center border-b-[3px] border-slate-800">
-        <p className="text-slate-900 text-xs uppercase tracking-[0.2em] font-black mb-2 border-b-2 border-slate-900/20 inline-block pb-1">
-          TIME REMAINING
+      <div className="bg-gradient-to-r from-[#DBDCFF] to-[#FFE5C4] p-6 text-center border-b-[4px] border-slate-900 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:10px_10px]"></div>
+        <p className="relative z-10 text-slate-900 text-[15px] uppercase tracking-[0.3em] font-black mb-1">
+          Time Remaining
         </p>
-        <div className="flex justify-center items-center mt-2">
-          <p className="text-4xl font-black text-slate-900 tabular-nums tracking-tighter w-full max-w-[320px] font-mono drop-shadow-sm">
-            {timeLeft || 'Calculating...'}
+        <div className="relative z-10 flex justify-center items-center">
+          {/* ✨ ทำให้เวลาที่ใกล้หมด กระพริบเป็นสีแดงได้ถ้าต้องการ */}
+          <p className={`text-4xl font-black tabular-nums tracking-tighter font-mono drop-shadow-[2px_2px_0px_rgba(255,255,255,0.5)] ${timeLeft === '00h 00m 00s' ? 'text-red-600 animate-pulse' : 'text-slate-900'}`}>
+            {timeLeft || '00:00:00'}
           </p>
         </div>
       </div>
 
-      {/* 2. Content Section (Scrollable) */}
-      <div className="p-8 overflow-y-auto custom-scrollbar flex-1 pb-10 bg-[#f8fafc]"> 
+      <div className="p-8 overflow-y-auto custom-scrollbar flex-1 pb-10 bg-white relative">
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]"></div>
 
-        {/* Problem Indicator - สไตล์ป้ายแท็ก 2D */}
-        <div className="mb-8">
-          <span className="text-white font-black text-sm uppercase tracking-widest bg-blue-600 px-3 py-1.5 rounded border-[3px] border-slate-900 shadow-[3px_3px_0px_0px_#0f172a]">
-            Problem: {currentStep}
-          </span>
-          <h2 className="text-3xl font-black text-slate-900 mt-6 leading-tight tracking-tight uppercase">
+        <div className="mb-10 relative">
+          <div className="inline-block relative">
+             <div className="absolute inset-0 bg-slate-900 rounded-lg translate-x-1.5 translate-y-1.5"></div>
+             <span className="relative z-10 text-white font-black text-xs uppercase tracking-[0.2em] bg-blue-600 px-4 py-2 rounded-lg border-[3px] border-slate-900 block">
+               PROBLEM : {currentStep}
+             </span>
+          </div>
+          <h2 className="text-4xl font-black text-slate-900 mt-8 leading-[0.9] tracking-tighter uppercase">
             {problemData.title}
           </h2>
         </div>
 
-        {/* Description */}
-        <div className="mb-10">
-          <p className="text-slate-700 text-[19px] font-bold leading-relaxed border-l-[4px] border-blue-500 pl-4 bg-white p-4 rounded-r-lg shadow-sm">
+        <div className="mb-12 relative group">
+          <div className="absolute inset-0 bg-blue-500/10 rounded-2xl -rotate-1 group-hover:rotate-0 transition-transform duration-300"></div>
+          <p className="relative z-10 text-slate-800 text-[18px] font-bold leading-relaxed border-l-[8px] border-blue-600 pl-6 py-4">
             {problemData.description}
           </p>
         </div>
 
-        {/* --- Requirements (Mission Objectives) --- */}
-        <div className="mb-10 bg-white rounded-xl border-[3px] border-slate-800 shadow-[6px_6px_0px_0px_#1e293b] overflow-hidden">
-          {/* Header */}
-          <div className="bg-slate-800 border-b-[3px] border-slate-800 px-6 py-4 flex items-center justify-between">
-            <h3 className="font-black text-white flex items-center text-lg tracking-widest uppercase">
-              <span className="mr-3 text-2xl">🎯</span> Mission Objectives
-            </h3>
-            <span className="bg-[#FF4500] text-white text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000000]">
-              Rules
-            </span>
-          </div>
+        <div className="mb-12">
+          <div className="bg-slate-900 border-[4px] border-slate-900 rounded-2xl shadow-[6px_6px_0px_0px_#FF9900] overflow-hidden">
+            <div className="bg-slate-800 px-6 py-4 flex items-center justify-between border-b-[4px] border-slate-900">
+              <h3 className="font-black text-white flex items-center text-sm tracking-widest uppercase">
+                <span className="mr-3 text-xl">🎯</span> Mission Objectives
+              </h3>
+              <div className="bg-[#FF4500] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000]">
+                Rules
+              </div>
+            </div>
 
-          {/* รายการ Requirements แบบแบนๆ */}
-          <div className="p-6 space-y-4 bg-white">
-            {problemData.requirements?.map((req, i) => (
-              <div
-                key={i}
-                className="group flex items-start gap-4 p-4 rounded-lg border-[3px] border-slate-200 bg-slate-50 hover:bg-white hover:border-slate-800 hover:shadow-[4px_4px_0px_0px_#1e293b] hover:-translate-y-1 hover:-translate-x-1 transition-all duration-200"
-              >
-                {/* กล่องตัวเลขทรงเหลี่ยม */}
-                <div className="flex-shrink-0 mt-0.5 w-8 h-8 rounded border-[3px] border-slate-800 bg-white flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  <span className="text-slate-800 group-hover:text-white text-sm font-black font-mono">
-                    {i + 1}
-                  </span>
+            <div className="p-6 space-y-4 bg-white">
+              {problemData.requirements?.map((req, i) => (
+                <div key={i} className="flex items-start gap-4 p-4 rounded-xl border-[3px] border-slate-100 hover:border-slate-900 hover:bg-slate-50 transition-all cursor-default group">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg border-[3px] border-slate-900 bg-white flex items-center justify-center shadow-[3px_3px_0px_0px_#000] group-hover:bg-blue-600 group-hover:text-white transition-all">
+                    <span className="font-black font-mono text-sm">{i + 1}</span>
+                  </div>
+                  <p className="text-slate-700 font-bold text-[15px] leading-tight pt-1.5">{req}</p>
                 </div>
-                {/* ข้อความ */}
-                <p className="text-slate-800 font-bold text-[16px] leading-relaxed pt-1">
-                  {req}
-                </p>
-              </div>
-            ))}
-            {!problemData.requirements && (
-              <div className="text-center py-6 text-slate-400 italic font-black uppercase">
-                No explicit requirements.
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         </div>
-        {/* --- จบส่วน Requirements --- */}
 
-        {/* Table Structure */}
-        <div className="mb-0"> 
-          <div className="flex items-center justify-between mb-6 px-1">
-            <h3 className="font-black text-slate-900 flex items-center text-lg tracking-widest uppercase">
-              <span className="mr-3 text-2xl">📊</span> Table Structure
+        <div className="space-y-6"> 
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-black text-slate-900 flex items-center text-sm tracking-widest uppercase">
+              <span className="mr-3 text-xl">📊</span> Database Schema
             </h3>
-            <span className="text-white font-mono text-sm font-black bg-blue-600 px-4 py-2 rounded border-[3px] border-slate-900 shadow-[3px_3px_0px_0px_#0f172a]">
-              {problemData.table}
+            <span className="text-white font-mono text-[10px] font-black bg-blue-600 px-3 py-1.5 rounded-lg border-[3px] border-slate-900 shadow-[3px_3px_0px_0px_#000] uppercase">
+              Table: {problemData.table}
             </span>
           </div>
           
-          <div className="border-[3px] border-slate-800 rounded-xl overflow-hidden shadow-[6px_6px_0px_0px_#1e293b] bg-white">
-            <table className="w-full text-base border-collapse">
-              <thead className="bg-slate-800 border-b-[3px] border-slate-800">
-                <tr>
-                  <th className="px-6 py-5 text-left font-black text-white uppercase text-[13px] tracking-widest border-r-[3px] border-slate-700">Column</th>
-                  <th className="px-6 py-5 text-left font-black text-white uppercase text-[13px] tracking-widest">Type</th>
+          <div className="border-[4px] border-slate-900 rounded-2xl overflow-hidden shadow-[8px_8px_0px_0px_#000] bg-white">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-900">
+                  <th className="px-6 py-4 font-black text-white uppercase text-[11px] tracking-widest border-r-2 border-slate-700">Column</th>
+                  <th className="px-6 py-4 font-black text-white uppercase text-[11px] tracking-widest">Type</th>
                 </tr>
               </thead>
-              <tbody className="divide-y-[3px] divide-slate-800">
+              <tbody className="divide-y-2 divide-slate-100">
                 {problemData.columns?.map((col, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 border-r-[3px] border-slate-800">
-                      <code className="text-blue-700 font-black font-mono text-[16px] bg-blue-50 px-2 py-1 rounded border-2 border-blue-200">
+                  <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
+                    <td className="px-6 py-4 border-r-2 border-slate-100">
+                      <code className="text-blue-700 font-black font-mono text-sm bg-blue-50 px-2 py-1 rounded-md">
                         {col.name}
                       </code>
                     </td>
-                    <td className="px-6 py-4 text-slate-600 font-bold font-mono text-[15px] uppercase">
+                    <td className="px-6 py-4 text-slate-500 font-bold font-mono text-xs uppercase">
                       {col.type}
                     </td>
                   </tr>

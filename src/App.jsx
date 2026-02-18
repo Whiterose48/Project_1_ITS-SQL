@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import Home from './components/Home';
 import Courses from './components/Courses';
@@ -15,167 +15,230 @@ import { dbManager } from './lib/db-manager';
 import { problems } from './lib/problems';
 import { Verifier } from './lib/verifier';
 import { HintEngine } from './lib/hint-engine';
+import { authenticateUser } from './lib/users'; 
 import botIcon from './assets/bot.png'; 
 
 export default function App() {
-  // --- 1. System & Auth States ---
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem('isLoggedIn') === 'true';
-  });
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [currentPage, setCurrentPage] = useState(() => {
-    const auth = localStorage.getItem('isLoggedIn') === 'true';
-    if (!auth) return 'home';
-    // ✨ เปลี่ยนค่า default เป็น 'home' แทน 'dashboard'
-    return localStorage.getItem('currentPage') || 'home'; 
+  const isFreshEntry = !sessionStorage.getItem('is_initialized');
+
+  const [user, setUser] = useState(() => {
+    if (isFreshEntry) return null;
+    const saved = sessionStorage.getItem('userData');
+    return saved ? JSON.parse(saved) : null;
   });
 
-  // --- 2. Learning & UI States ---
-  const [currentProblem, setCurrentProblem] = useState(() => parseInt(localStorage.getItem('currentProblem')) || 1);
-  const [selectedTab, setSelectedTab] = useState(() => localStorage.getItem('selectedTab') || 'description');
+  const isLoggedIn = !!user;
+
+  const [currentPage, setCurrentPage] = useState(() => {
+    if (isFreshEntry) return 'home';
+    const auth = sessionStorage.getItem('isLoggedIn') === 'true';
+    if (!auth) return 'home';
+    return sessionStorage.getItem('currentPage') || 'home';
+  });
+
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [workspaceMode, setWorkspaceMode] = useState(() => localStorage.getItem('workspaceMode') || 'COURSE');
+
+  const handleLogout = useCallback(() => {
+    setUser(null);
+    setCurrentPage('home'); 
+    sessionStorage.removeItem('userData');
+    sessionStorage.removeItem('isLoggedIn');
+    sessionStorage.removeItem('currentPage');
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (warningRef.current) clearTimeout(warningRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+  }, []);
+
+  const handleLogin = (id, password) => {
+    const foundUser = authenticateUser(id, password);
+    if (foundUser) {
+      setUser(foundUser);
+      setShowLoginModal(false);
+      setCurrentPage('home');
+      sessionStorage.setItem('userData', JSON.stringify(foundUser));
+      sessionStorage.setItem('isLoggedIn', 'true');
+    } else {
+      console.error("Authentication Failed");
+    }
+  };
+
+  const [showWarning, setShowWarning] = useState(false);
+  const [countdown, setCountdown] = useState(30);
+  const timeoutRef = useRef(null);
+  const warningRef = useRef(null);
+  const countdownIntervalRef = useRef(null);
+
+  const resetTimer = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (warningRef.current) clearTimeout(warningRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    
+    setShowWarning(false);
+    setCountdown(30);
+
+    if (isLoggedIn) {
+      warningRef.current = setTimeout(() => {
+        setShowWarning(true);
+        countdownIntervalRef.current = setInterval(() => {
+          setCountdown(prev => (prev > 0 ? prev - 1 : 0));
+        }, 1000);
+      }, 150000); 
+
+      timeoutRef.current = setTimeout(() => handleLogout(), 180000); 
+    }
+  }, [isLoggedIn, handleLogout]);
+
+  useEffect(() => {
+    const events = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+    resetTimer();
+    return () => events.forEach(event => window.removeEventListener(event, resetTimer));
+  }, [resetTimer]);
+
+  useEffect(() => {
+    sessionStorage.setItem('is_initialized', 'true');
+    const initializeApp = async () => {
+      try { 
+        if (!window.duckdb_initialized) {
+          await dbManager.initialize(); 
+          window.duckdb_initialized = true;
+        }
+      } catch (err) { console.error(err); } 
+      finally { setIsLoading(false); }
+    };
+    initializeApp();
+  }, []);
+
+  useEffect(() => { sessionStorage.setItem('currentPage', currentPage); }, [currentPage]);
+
+  // ✨ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ซ้ำๆ (จุดแก้บั๊กช้า)
+  const getWorkspaceKeys = useCallback(() => {
+    const mode = localStorage.getItem('workspaceMode') || 'COURSE';
+    const modId = localStorage.getItem('workspaceModule') || '01';
+    const userId = user?.id || 'guest';
+    return {
+      statusKey: `statuses_${userId}_${mode}_${modId}`,
+      stepKey: `currentStep_${userId}_${mode}_${modId}`,
+      submissionKey: `submissions_${userId}_${mode}_${modId}`
+    };
+  }, [user?.id]);
+
+  const [currentProblem, setCurrentProblem] = useState(1);
+  const [selectedTab, setSelectedTab] = useState(() => localStorage.getItem('selectedTab') || 'description');
   const [problemData, setProblemData] = useState(null);
   const [submissions, setSubmissions] = useState([]);
   const [overlay, setOverlay] = useState({ visible: false, status: 'loading', message: '' });
-
   const [filteredProblemsList, setFilteredProblemsList] = useState([]);
-
-  const [problemStatuses, setProblemStatuses] = useState(() => {
-    const saved = localStorage.getItem('problemStatuses');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [problemStatuses, setProblemStatuses] = useState([]);
   
   const [currentHints, setCurrentHints] = useState([]);
   const [hintIndex, setHintIndex] = useState(0);
   const [isHintOpen, setIsHintOpen] = useState(false);
+  const [botAlert, setBotAlert] = useState(false); 
   const hintRef = useRef(null);
 
-  // --- 3. Persistence & Sync Effects ---
-  useEffect(() => { localStorage.setItem('isLoggedIn', isLoggedIn); }, [isLoggedIn]);
-  useEffect(() => { localStorage.setItem('currentPage', currentPage); }, [currentPage]);
-  useEffect(() => { localStorage.setItem('currentProblem', currentProblem); }, [currentProblem]);
   useEffect(() => { localStorage.setItem('selectedTab', selectedTab); }, [selectedTab]);
-  useEffect(() => { localStorage.setItem('problemStatuses', JSON.stringify(problemStatuses)); }, [problemStatuses]);
 
+  const refreshCurrentSubmissions = useCallback((step) => {
+    const { submissionKey } = getWorkspaceKeys();
+    const allSubs = JSON.parse(localStorage.getItem(submissionKey)) || {};
+    const specificSub = allSubs[step || currentProblem];
+    setSubmissions(specificSub ? [specificSub] : []);
+  }, [getWorkspaceKeys, currentProblem]);
+
+  // ✨ Effect จัดการ Workspace แบบ High Performance
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [currentPage]);
+    if (currentPage === 'workspace') {
+      const mode = localStorage.getItem('workspaceMode') || 'COURSE';
+      const modId = localStorage.getItem('workspaceModule') || '01';
+      setWorkspaceMode(mode);
 
-  useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        setIsLoading(true);
-        await dbManager.initialize();
-        
-        if (currentPage === 'workspace') {
-          const mode = localStorage.getItem('workspaceMode') || 'COURSE';
-          const modId = localStorage.getItem('workspaceModule') || '02';
+      const currentList = problems.filter(p => p.type === mode && p.moduleId === modId);
+      setFilteredProblemsList(currentList);
+      
+      const { statusKey, stepKey } = getWorkspaceKeys();
+      const savedStatuses = localStorage.getItem(statusKey);
+      setProblemStatuses(savedStatuses ? JSON.parse(savedStatuses) : []);
+      
+      const savedStep = parseInt(localStorage.getItem(stepKey)) || 1;
+      const safeStep = (savedStep >= 1 && savedStep <= currentList.length) ? savedStep : 1;
 
-          const currentList = problems.filter(p => p.type === mode && p.moduleId === modId);
-          
-          if (currentList.length > 0) {
-            setFilteredProblemsList(currentList);
-            
-            if (problemStatuses.length !== currentList.length) {
-                setProblemStatuses(Array(currentList.length).fill(null));
-                setCurrentProblem(1);
-                setProblemData(currentList[0]);
-            } else {
-                const safeIndex = (currentProblem - 1 >= 0 && currentProblem - 1 < currentList.length) 
-                                  ? currentProblem - 1 : 0;
-                setProblemData(currentList[safeIndex]);
-            }
-          } else {
-            setFilteredProblemsList([problems[0]]);
-            setProblemData(problems[0]);
-            setProblemStatuses([null]);
-          }
-        }
-        
-        setIsLoading(false);
-      } catch (err) {
-        setError(err.message);
-        setIsLoading(false);
-      }
-    };
-    initializeApp();
-  }, [currentPage]);
-
-  useEffect(() => {
-    if (filteredProblemsList.length > 0) {
-      const safeIndex = (currentProblem - 1 >= 0 && currentProblem - 1 < filteredProblemsList.length) 
-                        ? currentProblem - 1 : 0;
-      setProblemData(filteredProblemsList[safeIndex]);
-      setSelectedTab('description'); 
-    }
-  }, [currentProblem, filteredProblemsList]);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (hintRef.current && !hintRef.current.contains(event.target)) {
-        setIsHintOpen(false);
+      if (currentList.length > 0) {
+        const stepIndex = safeStep - 1;
+        setCurrentProblem(safeStep);
+        setProblemData(currentList[stepIndex]);
+        refreshCurrentSubmissions(safeStep);
+      } else {
+        setProblemData({
+          title: `NO CONTENT FOUND`,
+          description: `กรุณาติดต่อผู้สอนเพื่อเพิ่มข้อสอบ`,
+          requirements: [], table: 'N/A', columns: [], goldenQuery: ''
+        });
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [currentPage, getWorkspaceKeys]); // dependency แค่นี้พอ เพื่อหยุด Loop
 
-  // --- 4. Event Handlers ---
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setCurrentPage('home'); 
-    localStorage.clear();
-  };
-
-  const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
-    setShowLoginModal(false);
-    setCurrentPage('home');
-  };
+  // ✨ เมื่อมีการเปลี่ยนข้อ แยกออกมาเพื่อให้ทำงานรวดเร็ว
+  useEffect(() => {
+    if (currentPage === 'workspace' && filteredProblemsList.length > 0) {
+      const { stepKey } = getWorkspaceKeys();
+      const target = filteredProblemsList[currentProblem - 1];
+      if (target) {
+        setProblemData(target);
+        refreshCurrentSubmissions(currentProblem);
+        localStorage.setItem(stepKey, currentProblem.toString());
+      }
+    }
+  }, [currentProblem, filteredProblemsList, currentPage, getWorkspaceKeys, refreshCurrentSubmissions]);
 
   const updateProblemStatus = (index, status) => {
     setProblemStatuses(prev => {
       const next = [...prev];
       next[index] = status;
+      const { statusKey } = getWorkspaceKeys();
+      localStorage.setItem(statusKey, JSON.stringify(next));
       return next;
     });
   };
 
   const handleSubmit = async (code, language) => {
+    if(!problemData || problemData.title === 'NO CONTENT FOUND') return;
+    resetTimer(); 
     setOverlay({ visible: true, status: 'loading', message: 'Validating Query...' });
     try {
-      const verifier = new Verifier();
-      const result = await verifier.verify(code, problemData.goldenQuery);
-      updateProblemStatus(currentProblem - 1, result.success ? 'passed' : 'failed');
+      const result = await new Verifier().verify(code, problemData.goldenQuery);
+      const hasSemicolon = code.trim().endsWith(';');
+      const isPassed = result.success && hasSemicolon;
+      
+      updateProblemStatus(currentProblem - 1, isPassed ? 'passed' : 'failed');
+
+      const { submissionKey, mode, modId } = getWorkspaceKeys();
+      const existingSubs = JSON.parse(localStorage.getItem(submissionKey)) || {};
+      const newSubmission = { code, passed: isPassed, timestamp: new Date().toLocaleString(), queryResult: result.studentResult };
+      existingSubs[currentProblem] = newSubmission;
+      localStorage.setItem(submissionKey, JSON.stringify(existingSubs));
+
+      if (isPassed && user) {
+        const storageKey = `course_06070999_${user.id}_${mode}_lessons`;
+        const savedLessons = JSON.parse(localStorage.getItem(storageKey)) || [];
+        const updatedLessons = savedLessons.map(lesson => lesson.id === modId ? { ...lesson, status: 'COMPLETED' } : lesson);
+        localStorage.setItem(storageKey, JSON.stringify(updatedLessons));
+      }
 
       let hints = [];
-      if (!result.success) {
-        const hintEngine = new HintEngine();
-        hints = hintEngine.generateHints(code, result, problemData);
-        setCurrentHints(hints);
-        setHintIndex(0);
-      } else {
-        setCurrentHints([]);
-        setIsHintOpen(false);
-      }
-      
-      const newSubmission = {
-        code, language, timestamp: new Date().toLocaleString('th-TH'),
-        passed: result.success,
-        queryResult: result.studentResult || { columns: [], rows: [] },
-        hint: hints.length > 0 ? hints[0].message : null
-      };
-      
-      setSubmissions([newSubmission, ...submissions]);
-      setOverlay({ visible: true, status: result.success ? 'success' : 'error' });
-      
-      setTimeout(() => { 
-        setOverlay({ visible: false, status: 'loading', message: '' }); 
-        setSelectedTab('submissions'); 
-      }, 1500);
-    } catch (err) {
-      setOverlay({ visible: true, status: 'error', message: err.message });
+      if (!isPassed && mode !== 'EXAM') {
+        hints = new HintEngine().generateHints(code, result, problemData);
+        if (result.success && !hasSemicolon) hints = [{ message: "Syntax Error: SQL queries must end with a semicolon (;)." }];
+        setCurrentHints(hints); setHintIndex(0); setBotAlert(true); 
+      } else { setBotAlert(false); }
+
+      setSubmissions([newSubmission]);
+      setOverlay({ visible: true, status: isPassed ? 'success' : 'error' });
+      setTimeout(() => { setOverlay({ visible: false }); setSelectedTab('submissions'); }, 1500);
+    } catch (err) { 
+      setOverlay({ visible: true, status: 'error', message: 'Parser Error' });
       setTimeout(() => setOverlay({ visible: false }), 2000);
     }
   };
@@ -187,51 +250,61 @@ export default function App() {
     setCurrentProblem(newStep);
   };
 
-  // --- 5. Render Logic ---
-  if (isLoading) return <FeedbackOverlay status="loading" isVisible={true} message="Initializing DBLearn..." />;
+  if (isLoading) return <FeedbackOverlay isVisible={true} />;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] relative font-sans text-left text-slate-900">
-      <div className="absolute inset-0 opacity-[0.03] bg-[size:24px_24px] bg-[linear-gradient(to_right,#808080_1px,transparent_1px),linear-gradient(to_bottom,#808080_1px,transparent_1px)] pointer-events-none fixed"></div>
+    <div className="min-h-screen relative font-sans text-left text-slate-900 overflow-x-hidden">
+      <style>{`
+          body, html { cursor: url("data:image/svg+xml,%3Csvg width='28' height='32' viewBox='0 0 28 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 4V28L11 21L16 29L21 26L16 18L24 18L4 4Z' fill='black'/%3E%3Cpath d='M0 0V24L7 17L12 25L17 22L12 14L20 14L0 0Z' fill='%23FF9900' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='5' cy='7' r='1.5' fill='white'/%3E%3C/svg%3E") 0 0, auto; }
+          button, a, select, [role="button"], .cursor-pointer { cursor: url("data:image/svg+xml,%3Csvg width='28' height='32' viewBox='0 0 28 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 4V28L11 21L16 29L21 26L16 18L24 18L4 4Z' fill='black'/%3E%3Cpath d='M0 0V24L7 17L12 25L17 22L12 14L20 14L0 0Z' fill='%23FF9900' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='5' cy='7' r='1.5' fill='white'/%3E%3C/svg%3E") 0 0, pointer; }
+          input, textarea, .monaco-editor * { cursor: text; }
+          @keyframes soft-pulse { 0% { transform: scale(0.9); opacity: 0.8; } 50% { transform: scale(1.4); opacity: 0.2; } 100% { transform: scale(0.9); opacity: 0.8; } }
+          .animate-soft-pulse { animation: soft-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+      `}</style>
 
-      {overlay.visible && (
-        <FeedbackOverlay status={overlay.status} isVisible={overlay.visible} onNextStep={() => setOverlay({ visible: false })} />
+      {showWarning && (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white border-[5px] border-slate-900 shadow-[12px_12px_0px_0px_#ef4444] p-10 rounded-[32px] max-w-md w-full text-center space-y-6">
+            <div className="text-6xl animate-bounce">⚠️</div>
+            <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900">Session Expiring</h3>
+            <p className="text-slate-600 font-bold text-lg leading-relaxed">ระบบจะ Logout อัตโนมัติในอีก <span className="text-red-600 font-black text-2xl font-mono underline decoration-4 underline-offset-4">{countdown}</span> วินาที</p>
+            <button onClick={resetTimer} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-[6px_6px_0px_0px_#ef4444] hover:translate-y-1 transition-all active:translate-y-2 active:shadow-none cursor-pointer">Stay Connected</button>
+          </div>
+        </div>
       )}
 
-      {showLoginModal && !isLoggedIn && (
-        <Login onLogin={handleLoginSuccess} onClose={() => setShowLoginModal(false)} />
-      )}
-      
-      <Header currentPage={currentPage} onNavigate={setCurrentPage} isLoggedIn={isLoggedIn} onLogout={handleLogout} onLoginClick={() => setShowLoginModal(true)} />
+      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[#F8FAFC]"></div>
+        <div className="absolute inset-0 opacity-[0.04] bg-[size:32px_32px] bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)]"></div>
+      </div>
+
+      {overlay.visible && <FeedbackOverlay isVisible={overlay.visible} />}
+      {showLoginModal && !isLoggedIn && <Login onLogin={handleLogin} onClose={() => setShowLoginModal(false)} />}
+      <Header currentPage={currentPage} onNavigate={setCurrentPage} isLoggedIn={isLoggedIn} userData={user} onLogout={handleLogout} onLoginClick={() => setShowLoginModal(true)} />
 
       <main className="container mx-auto px-4 py-12 relative z-10 min-h-screen">
         {currentPage === 'home' && <Home onNavigate={setCurrentPage} onShowLogin={() => setShowLoginModal(true)} isLoggedIn={isLoggedIn} />}
-
         {isLoggedIn ? (
           <>
-            {currentPage === 'courses' && <Courses onNavigate={setCurrentPage} />}
-            {currentPage === 'coursetext' && <CourseText onNavigate={setCurrentPage} />}
-            {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} />}
-            
-            {currentPage === 'workspace' && (
+            {currentPage === 'courses' && <Courses onNavigate={setCurrentPage} user={user} />}
+            {currentPage === 'coursetext' && <CourseText onNavigate={setCurrentPage} user={user} />}
+            {currentPage === 'dashboard' && <Dashboard onNavigate={setCurrentPage} user={user} />}
+            {currentPage === 'workspace' && problemData && (
               <div className="animate-in fade-in zoom-in-95 duration-300 pb-32">
                 <div className="mb-10 flex items-center justify-between">
                   <h1 className="text-6xl font-black tracking-tighter uppercase ">SQL Assignment</h1>
-                  <button onClick={() => setCurrentPage('coursetext')} className="bg-white border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_#000] hover:-translate-y-1 transition-all flex items-center gap-2">← Back to Lesson</button>
+                  <button onClick={() => setCurrentPage('coursetext')} className="bg-white border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_#000] hover:-translate-y-1 transition-all flex items-center gap-2 cursor-pointer">← Back to Lesson</button>
                 </div>
-
-                <StepIndicator 
-                    totalSteps={filteredProblemsList.length || 1} 
-                    currentStep={currentProblem} 
-                    onStepChange={handleStepChange} 
-                    statuses={problemStatuses} 
-                />
-
+                <StepIndicator totalSteps={filteredProblemsList.length || 1} currentStep={currentProblem} onStepChange={handleStepChange} statuses={problemStatuses} />
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-10">
                   <LeftPanel problemData={problemData} currentStep={currentProblem} />
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-2 relative z-20">
                     <Tabs selectedTab={selectedTab} onTabChange={setSelectedTab} />
-                    {selectedTab === 'description' ? <RightPanel problemData={problemData} currentStep={currentProblem} onSubmit={handleSubmit} /> : <MySubmissions submissions={submissions} problemData={problemData} />}
+                    {selectedTab === 'description' ? (
+                      <RightPanel problemData={problemData} currentStep={currentProblem} onSubmit={handleSubmit} />
+                    ) : (
+                      <MySubmissions submissions={submissions} problemData={problemData} />
+                    )}
                   </div>
                 </div>
               </div>
@@ -242,95 +315,35 @@ export default function App() {
         )}
       </main>
 
-      {/* ✨ AI Bot Widget - โทนสี Professional, Clean & Simple */}
-      {currentPage === 'workspace' && isLoggedIn && (
-        <div className="fixed bottom-10 right-10 z-50 flex items-end gap-6" ref={hintRef}>
-          
-          {/* Chat Bubble Window */}
-          <div className={`transition-all duration-300 transform origin-bottom-right ${isHintOpen ? 'scale-100 opacity-100' : 'scale-75 opacity-0 pointer-events-none translate-y-10'}`}>
-            <div className="bg-white border-[4px] border-slate-900 shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] rounded-2xl w-[400px] md:w-[450px] mb-6 relative flex flex-col overflow-hidden">
-              
-              {/* Window Header - เปลี่ยนเป็นสีกรมท่าเข้ม ดูเรียบหรูทางการ */}
-              <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">🤖</span>
-                  <h4 className="font-black text-lg uppercase tracking-widest text-white">AI Assistant</h4>
+      {currentPage === 'workspace' && isLoggedIn && workspaceMode !== 'EXAM' && (
+        <>
+          {isHintOpen && <div className="fixed inset-0 z-[1999] bg-slate-900/10 backdrop-blur-[2px]" onClick={() => setIsHintOpen(false)}></div>}
+          <div className="fixed bottom-10 right-10 z-[2000] flex flex-col items-end pointer-events-none" ref={hintRef}>
+            <div className={`pointer-events-auto absolute bottom-full right-0 mb-4 transition-all duration-300 origin-bottom-right ${isHintOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
+              <div className="bg-white border-[5px] border-slate-900 shadow-[15px_15px_0px_0px_#000] rounded-[40px] w-[90vw] max-w-[850px] relative flex flex-col overflow-hidden">
+                <div className="bg-slate-900 text-white px-10 py-6 flex items-center border-b-[5px] border-slate-900">
+                  <h4 className="font-black text-2xl uppercase tracking-[0.2em]">Agentic Intelligence SQL</h4>
                 </div>
-                <div className="flex gap-2">
-                  <div className="w-3 h-3 rounded-full bg-slate-600"></div>
-                  <div className="w-3 h-3 rounded-full bg-slate-600"></div>
-                </div>
-              </div>
-              
-              {/* Chat Body */}
-              <div className="p-6 bg-slate-50">
-                {/* Terminal Display - ใช้พื้นหลังสีเทาเข้ม ตัวหนังสือสบายตา */}
-                <div className="p-6 bg-slate-800 border-[3px] border-slate-900 rounded-xl shadow-inner min-h-[150px] text-left relative">
-                  <p className="text-slate-400 text-xs font-black uppercase mb-3 tracking-widest flex items-center gap-2">
-                    <span className="text-emerald-400">{'>'}</span> 
-                    {/* ✨ เเก้ไขเฉพาะข้อความตรงนี้ตามที่สั่ง */}
-                    <span>{currentHints.length > 0 ? `Hint ${hintIndex + 1} of ${currentHints.length}` : 'HINTS STANDBY'}</span>
-                    <span className="animate-pulse w-2 h-4 bg-emerald-400 inline-block ml-1"></span>
-                  </p>
-                  <p className="text-[15px] font-medium font-mono leading-relaxed text-slate-200">
-                    {/* ✨ เเก้ไขเฉพาะข้อความตรงนี้ตามที่สั่ง */}
-                    {currentHints.length > 0 ? currentHints[hintIndex]?.message : 'Submit your SQL query first. If you encounter any errors or incorrect results, I will analyze your code and provide hints here.'}
-                  </p>
-                </div>
-
-                {/* ปุ่มเลื่อนดูคำใบ้ - ดีไซน์คลีนๆ ขาวดำ */}
-                {currentHints.length > 1 && (
-                  <div className="flex justify-between items-center mt-6">
-                    <button 
-                      onClick={() => setHintIndex(prev => Math.max(0, prev - 1))}
-                      disabled={hintIndex === 0}
-                      className="px-5 py-2.5 bg-white border-[3px] border-slate-900 rounded-xl font-black text-xs uppercase shadow-[3px_3px_0px_0px_#0f172a] hover:-translate-y-0.5 active:translate-y-1 disabled:opacity-50 disabled:shadow-none transition-all"
-                    >
-                      ← Prev
-                    </button>
-                    <button 
-                      onClick={() => setHintIndex(prev => Math.min(currentHints.length - 1, prev + 1))}
-                      disabled={hintIndex === currentHints.length - 1}
-                      className="px-5 py-2.5 bg-slate-900 text-white border-[3px] border-slate-900 rounded-xl font-black text-xs uppercase shadow-[3px_3px_0px_0px_#0f172a] hover:-translate-y-0.5 active:translate-y-1 disabled:opacity-50 disabled:shadow-none transition-all"
-                    >
-                      Next →
-                    </button>
+                <div className="p-10 bg-slate-50">
+                  <div className="p-10 bg-slate-800 border-[5px] border-slate-900 rounded-[30px] shadow-[inset_6px_6px_0px_0px_rgba(0,0,0,0.3)] min-h-[220px] flex flex-col justify-center relative">
+                    <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 mb-4"><span className="w-3 h-3 bg-emerald-400 rounded-full animate-ping"></span>DEEP ANALYSIS: {hintIndex + 1} / {currentHints.length || 0}</p>
+                    <p className="text-2xl font-bold font-mono leading-relaxed text-slate-100">{currentHints.length > 0 ? currentHints[hintIndex]?.message : "Submit query for analysis."}</p>
                   </div>
-                )}
+                  {currentHints.length > 1 && (
+                    <div className="flex gap-6 mt-8">
+                      <button onClick={(e) => { e.stopPropagation(); setHintIndex(prev => Math.max(0, prev - 1)); }} className="flex-1 bg-white border-[4px] border-slate-900 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-[6px_6px_0px_0px_#000] hover:translate-y-1 transition-all cursor-pointer">Previous</button>
+                      <button onClick={(e) => { e.stopPropagation(); setHintIndex(prev => Math.min(currentHints.length - 1, prev + 1)); }} className="flex-1 bg-slate-900 text-white border-[4px] border-slate-900 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-[6px_6px_0px_0px_#FF9900] hover:translate-y-1 transition-all cursor-pointer">Next</button>
+                    </div>
+                  )}
+                </div>
               </div>
-
-              {/* Chat Bubble Tail */}
-              <div className="absolute -bottom-[16px] right-[65px] w-8 h-8 bg-slate-50 border-r-[4px] border-b-[4px] border-slate-900 rotate-[45deg] z-10"></div>
             </div>
+            <button onClick={(e) => { e.stopPropagation(); setIsHintOpen(!isHintOpen); setBotAlert(false); }} className={`pointer-events-auto cursor-pointer relative w-32 h-32 rounded-[40px] border-[6px] border-slate-900 flex items-center justify-center bg-white transition-all transform hover:-translate-y-2 ${isHintOpen ? 'translate-y-2 shadow-none' : 'shadow-[12px_12px_0px_0px_rgba(15,23,42,1)]'}`}>
+              {botAlert && <div className="absolute -top-3 -left-3 z-50 w-10 h-10 bg-[#ef4444] text-white rounded-full border-[4px] border-[#1e293b] flex items-center justify-center shadow-lg"><span className="font-black text-xl">!</span></div>}
+              <img src={botIcon} alt="Bot" className="w-full h-full object-contain p-3" />
+            </button>
           </div>
-
-          {/* Bot Toggle Button - ลดขนาดเงาและขอบให้มินิมอลขึ้น */}
-          <button 
-            onClick={() => setIsHintOpen(!isHintOpen)} 
-            className={`relative w-24 h-24 md:w-28 md:h-28 rounded-3xl border-[4px] border-slate-900 flex items-center justify-center transition-all duration-300 z-50 p-4 bg-white
-              ${isHintOpen 
-                ? 'translate-y-1 shadow-none' 
-                : 'shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] hover:shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] hover:-translate-y-1'
-              }`}
-          >
-            {/* กล่องแจ้งเตือนคำใบ้ (จุดแดง) ปรับให้ดูเป็นธรรมชาติ */}
-            {currentHints.length > 0 && !isHintOpen && (
-              <div className="absolute -top-2 -right-2 flex items-center justify-center h-8 w-8 z-20">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative flex items-center justify-center rounded-full h-8 w-8 bg-red-500 border-[3px] border-slate-900 text-white font-black text-xs">
-                  !
-                </span>
-              </div>
-            )}
-            
-            {/* รูป Bot */}
-            <img 
-              src={botIcon} 
-              alt="Bot" 
-              className={`w-full h-full object-contain transition-all duration-300 ${isHintOpen ? 'scale-90 opacity-60' : 'scale-100'}`} 
-            />
-          </button>
-        </div>
+        </>
       )}
     </div>
   );

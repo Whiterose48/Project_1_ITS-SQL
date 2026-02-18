@@ -6,7 +6,6 @@ export default function Header({ currentPage, onNavigate, isLoggedIn, onLogout, 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // การตั้งค่าเวลา (Time Formatting)
   useEffect(() => {
     let timer;
     const updateTime = () => {
@@ -36,7 +35,6 @@ export default function Header({ currentPage, onNavigate, isLoggedIn, onLogout, 
     return () => clearInterval(timer);
   }, []);
 
-  // ปิด Dropdown เมื่อคลิกข้างนอก
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -60,7 +58,6 @@ export default function Header({ currentPage, onNavigate, isLoggedIn, onLogout, 
     <header className="bg-[#000044] text-white py-4 px-10 border-b-[4px] border-slate-900 relative z-50">
       <div className="max-w-[1440px] mx-auto flex items-center justify-between">
         
-        {/* ส่วนซ้าย: แก้ไขให้ไม่มีขอบขาวแล้ว */}
         <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onNavigate('home')}>
           <div className="w-12 h-12 flex items-center justify-center shrink-0">
             <img 
@@ -74,9 +71,7 @@ export default function Header({ currentPage, onNavigate, isLoggedIn, onLogout, 
           </h1>
         </div>
 
-        {/* ส่วนกลางและขวา */}
         <div className="flex items-center gap-8">
-          
           {isLoggedIn && (
             <nav className="flex items-center gap-3 font-bold mr-4">
               <button onClick={() => onNavigate('home')} className={getNavLinkStyle('home')}>Home</button>
@@ -85,7 +80,6 @@ export default function Header({ currentPage, onNavigate, isLoggedIn, onLogout, 
             </nav>
           )}
 
-          {/* กล่องเวลา */}
           <div className="bg-white text-[#000066] font-black h-11 flex items-center justify-center w-[260px] border-[3px] border-slate-900 shadow-[4px_4px_0px_0px_#000022]">
             <span className="tabular-nums text-sm font-mono uppercase tracking-tight">
               {currentTime || 'LOADING...'}
@@ -131,7 +125,6 @@ export default function Header({ currentPage, onNavigate, isLoggedIn, onLogout, 
               Sign In
             </button>
           )}
-
         </div>
       </div>
     </header>

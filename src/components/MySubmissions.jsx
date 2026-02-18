@@ -17,32 +17,19 @@ export default function MySubmissions({ submissions, problemData }) {
   }
 
   const latestSubmission = submissions[0];
-
-  // ✨ ตรวจสอบ Semicolon (;) จากโค้ดที่ส่งมา
   const hasSemicolon = latestSubmission.code.trim().endsWith(';');
-  
-  // ✨ Override สถานะ: จะผ่านได้ก็ต่อเมื่อระบบตรวจว่าผ่าน (passed) "และ" ต้องมี Semicolon ปิดท้าย
   const isPassed = latestSubmission.passed && hasSemicolon;
-
-  // ✨ จัดการคำใบ้: ถ้าโค้ดทำงานถูกแต่ลืมใส่ ; ให้แสดงคำใบ้แจ้งเตือนเฉพาะเจาะจง
-  const displayHint = (!hasSemicolon && latestSubmission.passed) 
-    ? "Syntax Error: SQL queries must end with a semicolon (;). Please check your code and try again." 
-    : latestSubmission.hint;
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* --- Test Status Header --- */}
       <div className={`rounded-xl p-8 border-[3px] border-slate-900 shadow-[8px_8px_0px_0px_#0f172a] relative overflow-hidden ${
-        isPassed 
-          ? 'bg-[#10B981]' 
-          : 'bg-[#EF4444]'
+        isPassed ? 'bg-[#10B981]' : 'bg-[#EF4444]'
       }`}>
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,1)_25%,rgba(255,255,255,1)_50%,transparent_50%,transparent_75%,rgba(255,255,255,1)_75%,rgba(255,255,255,1)_100%)] bg-[length:20px_20px]"></div>
         
         <div className="relative flex items-center justify-between z-10">
           <div className="flex items-center">
-            {/* ✨ ใช้ค่า isPassed แทน latestSubmission.passed */}
             <div className="bg-white border-[3px] border-slate-900 w-20 h-20 rounded-2xl flex items-center justify-center text-5xl shadow-[4px_4px_0px_0px_#0f172a] mr-8 rotate-[-3deg]">
               {isPassed ? '🏆' : '💥'}
             </div>
@@ -61,7 +48,6 @@ export default function MySubmissions({ submissions, problemData }) {
         </div>
       </div>
 
-      {/* Your Code Section */}
       <div>
         <div className="inline-flex items-center gap-3 bg-blue-600 text-white px-5 py-2.5 border-[3px] border-slate-900 shadow-[4px_4px_0px_0px_#0f172a] mb-6 rounded-lg">
           <span className="text-xl">📝</span>
@@ -78,7 +64,6 @@ export default function MySubmissions({ submissions, problemData }) {
         </div>
       </div>
 
-      {/* Query Result Table */}
       {latestSubmission.queryResult && latestSubmission.queryResult.rows && (
         <div>
           <div className="inline-flex items-center gap-3 bg-purple-600 text-white px-5 py-2.5 border-[3px] border-slate-900 shadow-[4px_4px_0px_0px_#0f172a] mb-6 rounded-lg">
@@ -88,22 +73,6 @@ export default function MySubmissions({ submissions, problemData }) {
           <div className="border-[3px] border-slate-800 rounded-xl shadow-[6px_6px_0px_0px_#1e293b] overflow-hidden bg-white">
             <ResultTable data={latestSubmission.queryResult.rows} />
           </div>
-        </div>
-      )}
-
-      {/* Hint if Failed (Dialog Style) */}
-      {/* ✨ แสดงคำใบ้โดยอิงจากค่า isPassed ที่ผ่านการเช็ค Semicolon แล้ว */}
-      {!isPassed && displayHint && (
-        <div className="bg-[#FFD700] border-[3px] border-slate-900 p-8 rounded-2xl shadow-[8px_8px_0px_0px_#0f172a] relative mt-10">
-          <div className="absolute -top-6 -left-6 w-14 h-14 bg-white border-[3px] border-slate-900 rounded-2xl flex items-center justify-center text-3xl shadow-[4px_4px_0px_0px_#000] animate-bounce">
-            💡
-          </div>
-          <h4 className="text-2xl font-black text-slate-900 mb-4 uppercase tracking-widest ml-6">
-            Bot_Suggestion
-          </h4>
-          <p className="text-slate-900 text-xl font-bold leading-relaxed ml-6 border-l-[6px] border-slate-900 pl-6 bg-white/40 py-4 rounded-r-xl">
-            {displayHint}
-          </p>
         </div>
       )}
     </div>

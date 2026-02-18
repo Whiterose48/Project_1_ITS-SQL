@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-// 1. Import รูปภาพเข้ามาเป็น Module
 import erdImage from '../assets/erd.png'; 
 
 export default function Tabs({ selectedTab, onTabChange }) {
@@ -10,7 +9,6 @@ export default function Tabs({ selectedTab, onTabChange }) {
       <div className="bg-slate-50 rounded-xl border-[3px] border-slate-200 mb-6 p-2.5">
         <div className="flex gap-4">
           
-          {/* Tab 1: Description */}
           <button
             onClick={() => onTabChange('description')}
             className={`flex-1 px-4 py-4 font-black text-sm tracking-widest uppercase transition-all duration-200 rounded-lg flex items-center justify-center gap-2 border-[3px] z-10 ${
@@ -23,7 +21,6 @@ export default function Tabs({ selectedTab, onTabChange }) {
             DESCRIPTION
           </button>
 
-          {/* Action Button: ER Diagram */}
           <button
             onClick={() => setShowER(true)}
             className="flex-1 px-4 py-4 font-black text-sm tracking-widest uppercase transition-all duration-200 rounded-lg flex items-center justify-center gap-2 border-[3px] z-10 bg-white text-orange-600 border-orange-300 shadow-[4px_4px_0px_0px_#fdba74] hover:-translate-y-1 hover:-translate-x-0.5 hover:bg-orange-50 hover:border-orange-400 hover:shadow-[6px_6px_0px_0px_#fdba74] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none"
@@ -32,7 +29,6 @@ export default function Tabs({ selectedTab, onTabChange }) {
             ER DIAGRAM
           </button>
 
-          {/* Tab 2: My Submissions */}
           <button
             onClick={() => onTabChange('submissions')}
             className={`flex-1 px-4 py-4 font-black text-sm tracking-widest uppercase transition-all duration-200 rounded-lg flex items-center justify-center gap-2 border-[3px] z-10 ${
@@ -48,7 +44,6 @@ export default function Tabs({ selectedTab, onTabChange }) {
         </div>
       </div>
 
-      {/* --- ER Diagram Overlay --- */}
       {showER && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-8">
           <div 
@@ -74,18 +69,15 @@ export default function Tabs({ selectedTab, onTabChange }) {
             <div className="p-6 bg-slate-100 overflow-auto max-h-[75vh]">
               <div className="border-[4px] border-slate-900 rounded-xl overflow-hidden bg-white p-4 flex flex-col items-center justify-center min-h-[400px]">
                 
-                {/* 2. นำตัวแปรที่ import มาใส่ใน src */}
                 <img 
                   src={erdImage} 
                   alt="ER Diagram" 
                   className="max-w-full h-auto object-contain"
                   onError={(e) => {
                     e.target.src = "https://via.placeholder.com/800x400?text=Image+Not+Found";
-                    console.error("ตรวจสอบ Path ของรูปภาพอีกครั้งในโฟลเดอร์ assets");
                   }}
                 />
 
-                {/* ปุ่มเปิดรูปแยก เผื่อต้องการดูรายละเอียดชัดๆ */}
                 <a 
                   href={erdImage} 
                   target="_blank" 

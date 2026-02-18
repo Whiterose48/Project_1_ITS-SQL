@@ -1,16 +1,10 @@
 import React from 'react';
-// นำเข้ารูปภาพโลโก้จาก assets
 import kmitlLogo from '../assets/it.png'; 
 
-// ลบ props isLoggedIn และ onShowLogin ออก เพราะไม่ได้ใช้ในหน้านี้แล้ว
 export default function Home({ onNavigate }) {
-  
   return (
-    /* ✨ ขยายออกด้านข้างโดยปรับ max-w เป็น 1450px และเพิ่ม px-6 เพื่อไม่ให้ชิดขอบจอเกินไป */
     <div className="max-w-[1450px] mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20 px-4 md:px-6">
       
-      {/* 1. Hero Section (Split Layout) */}
-      {/* ✨ เพิ่ม gap-16 (จากเดิม gap-10) เพื่อให้ฝั่งซ้ายและขวาห่างกันมากขึ้นเมื่อจอกว้าง */}
       <div className="bg-[#000066] border-[4px] border-slate-900 shadow-[10px_10px_0px_0px_#0f172a] rounded-2xl p-8 md:p-14 relative overflow-hidden mt-6 flex flex-col md:flex-row items-center gap-10 lg:gap-16">
         <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none"></div>
         
@@ -35,7 +29,6 @@ export default function Home({ onNavigate }) {
           </button>
         </div>
 
-        {/* ✨ ขยายพื้นที่ฝั่ง Code Block ให้กว้างขึ้นเล็กน้อยเพื่อบาลานซ์กับหน้าจอ */}
         <div className="relative z-10 w-full md:w-5/12 lg:w-1/2 hidden md:block">
           <div className="bg-slate-900 border-[4px] border-slate-900 rounded-xl shadow-[8px_8px_0px_0px_#0f172a] overflow-hidden rotate-2 hover:rotate-0 transition-transform duration-300">
             <div className="bg-slate-200 border-b-[4px] border-slate-900 px-4 py-3 flex items-center gap-2">
@@ -57,13 +50,11 @@ export default function Home({ onNavigate }) {
         </div>
       </div>
 
-      {/* 2. What You'll Learn Section */}
       <div className="bg-white border-[4px] border-slate-900 shadow-[10px_10px_0px_0px_#0f172a] rounded-2xl p-10 relative">
         <div className="absolute -top-6 left-8 bg-[#FF9900] border-[4px] border-slate-900 px-8 py-2 rounded-lg shadow-[4px_4px_0px_0px_#0f172a]">
           <h2 className="text-2xl font-black uppercase text-slate-900 tracking-widest">What You'll Learn</h2>
         </div>
 
-        {/* ✨ เพิ่ม gap-x-20 (แนวนอน) เพื่อให้เนื้อหาสองฝั่งมีพื้นที่หายใจเมื่อหน้าจอกว้างขึ้น */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 lg:gap-x-20 gap-y-8 mt-8">
           {[
             "Database design and normalization principles",
@@ -85,7 +76,6 @@ export default function Home({ onNavigate }) {
         </div>
       </div>
 
-      {/* 3. School Info Section */}
       <div className="bg-[#f8fafc] border-[4px] border-slate-900 shadow-[10px_10px_0px_0px_#0f172a] rounded-xl relative mt-20">
         <div className="p-10 relative z-10 flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-16">
           <div className="space-y-4 flex-1 text-left">
@@ -122,31 +112,15 @@ export default function Home({ onNavigate }) {
         </div>
       </div>
 
-      {/* 4. Footer */}
       <div className="text-center py-8 border-[4px] border-slate-900 bg-slate-900 text-white rounded-xl shadow-[6px_6px_0px_0px_#0f172a] mt-12">
           <p className="font-black uppercase tracking-[0.15em] text-lg mb-2 text-emerald-400">
               © 2026 School of IT, KMITL (Prototype)
           </p>
-          
           <p className="font-black text-slate-300 text-xl tracking-widest uppercase flex items-center justify-center gap-3">
               Made by 
-              <a 
-              href="https://github.com/Whiterose48" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-white hover:text-[#FF9900] hover:underline transition-all duration-200 decoration-[3px] underline-offset-4"
-              >
-              @Phruk
-              </a> 
+              <a href="https://github.com/Whiterose48" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#FF9900] hover:underline transition-all duration-200 decoration-[3px] underline-offset-4">@Phruk</a> 
               <span className="text-slate-500">&</span> 
-              <a 
-              href="https://github.com/Parallaxxx25" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-white hover:text-[#FF9900] hover:underline transition-all duration-200 decoration-[3px] underline-offset-4"
-              >
-              @Khet
-              </a>
+              <a href="https://github.com/Parallaxxx25" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#FF9900] hover:underline transition-all duration-200 decoration-[3px] underline-offset-4">@Khet</a>
           </p>
       </div>
     </div>
