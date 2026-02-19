@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
 
-export default function Login({ onLogin, onClose }) {
+export default function Login({ onLogin, onClose, loginError }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [shake, setShake] = useState(false);
+
+  useEffect(() => {
+    if (loginError) {
+      setShake(true);
+      const timer = setTimeout(() => setShake(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [loginError]);
   
   const [displayText, setDisplayText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -74,6 +83,20 @@ export default function Login({ onLogin, onClose }) {
           </div>
 
           <div className="p-10 space-y-8">
+
+            {loginError && (
+              <div className={`bg-red-50 border-[3px] border-red-400 rounded-2xl p-4 flex items-center gap-3 ${shake ? 'animate-[shake_0.5s_ease-in-out]' : ''}`}>
+                <div className="bg-red-500 text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border-2 border-red-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="15" y1="9" x2="9" y2="15"/>
+                    <line x1="9" y1="9" x2="15" y2="15"/>
+                  </svg>
+                </div>
+                <p className="text-red-700 font-bold text-sm">{loginError}</p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="space-y-5">
                 

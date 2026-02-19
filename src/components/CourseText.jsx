@@ -46,6 +46,29 @@ export default function CourseText({ onNavigate, user }) {
     const saved = localStorage.getItem(storageKey);
     if (saved) setLessons(JSON.parse(saved));
     else setLessons(INITIAL_LESSONS);
+
+    // Auto-green: check if all problems in ASSIGNMENT modules are passed
+    if (activeTab === 'ASSIGNMENT') {
+      const storageKeyForSave = `course_06070999_${user.id}_ASSIGNMENT_lessons`;
+      const currentLessons = saved ? JSON.parse(saved) : INITIAL_LESSONS;
+      let updated = false;
+      const updatedLessons = currentLessons.map(lesson => {
+        const assignmentProblems = problems.filter(p => p.type === 'ASSIGNMENT' && p.moduleId === lesson.id);
+        if (assignmentProblems.length === 0) return lesson;
+        const statusKey = `statuses_${user.id}_ASSIGNMENT_${lesson.id}`;
+        const statuses = JSON.parse(localStorage.getItem(statusKey)) || [];
+        const allPassed = statuses.filter(s => s === 'passed').length >= assignmentProblems.length;
+        if (allPassed && lesson.status !== 'COMPLETED') {
+          updated = true;
+          return { ...lesson, status: 'COMPLETED' };
+        }
+        return lesson;
+      });
+      if (updated) {
+        setLessons(updatedLessons);
+        localStorage.setItem(storageKeyForSave, JSON.stringify(updatedLessons));
+      }
+    }
   }, [activeTab, user]);
 
   useEffect(() => {

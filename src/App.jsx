@@ -37,6 +37,7 @@ export default function App() {
   });
 
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginError, setLoginError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [workspaceMode, setWorkspaceMode] = useState(() => localStorage.getItem('workspaceMode') || 'COURSE');
 
@@ -52,15 +53,16 @@ export default function App() {
   }, []);
 
   const handleLogin = (id, password) => {
-    const foundUser = authenticateUser(id, password);
-    if (foundUser) {
-      setUser(foundUser);
+    const result = authenticateUser(id, password);
+    if (result.success) {
+      setUser(result.user);
       setShowLoginModal(false);
+      setLoginError('');
       setCurrentPage('home');
-      sessionStorage.setItem('userData', JSON.stringify(foundUser));
+      sessionStorage.setItem('userData', JSON.stringify(result.user));
       sessionStorage.setItem('isLoggedIn', 'true');
     } else {
-      console.error("Authentication Failed");
+      setLoginError(result.error);
     }
   };
 
@@ -214,17 +216,34 @@ export default function App() {
       
       updateProblemStatus(currentProblem - 1, isPassed ? 'passed' : 'failed');
 
-      const { submissionKey, mode, modId } = getWorkspaceKeys();
+      const { submissionKey } = getWorkspaceKeys();
+      const mode = localStorage.getItem('workspaceMode') || 'COURSE';
+      const modId = localStorage.getItem('workspaceModule') || '01';
       const existingSubs = JSON.parse(localStorage.getItem(submissionKey)) || {};
       const newSubmission = { code, passed: isPassed, timestamp: new Date().toLocaleString(), queryResult: result.studentResult };
       existingSubs[currentProblem] = newSubmission;
       localStorage.setItem(submissionKey, JSON.stringify(existingSubs));
 
       if (isPassed && user) {
-        const storageKey = `course_06070999_${user.id}_${mode}_lessons`;
-        const savedLessons = JSON.parse(localStorage.getItem(storageKey)) || [];
-        const updatedLessons = savedLessons.map(lesson => lesson.id === modId ? { ...lesson, status: 'COMPLETED' } : lesson);
-        localStorage.setItem(storageKey, JSON.stringify(updatedLessons));
+        if (mode === 'ASSIGNMENT') {
+          // For ASSIGNMENT: only mark lesson COMPLETED when ALL problems are passed
+          const { statusKey } = getWorkspaceKeys();
+          const updatedStatuses = JSON.parse(localStorage.getItem(statusKey)) || [];
+          updatedStatuses[currentProblem - 1] = 'passed';
+          const totalProblems = problems.filter(p => p.type === 'ASSIGNMENT' && p.moduleId === modId).length;
+          const allPassed = totalProblems > 0 && updatedStatuses.filter(s => s === 'passed').length >= totalProblems;
+          if (allPassed) {
+            const storageKey = `course_06070999_${user.id}_${mode}_lessons`;
+            const savedLessons = JSON.parse(localStorage.getItem(storageKey)) || [];
+            const updatedLessons = savedLessons.map(lesson => lesson.id === modId ? { ...lesson, status: 'COMPLETED' } : lesson);
+            localStorage.setItem(storageKey, JSON.stringify(updatedLessons));
+          }
+        } else {
+          const storageKey = `course_06070999_${user.id}_${mode}_lessons`;
+          const savedLessons = JSON.parse(localStorage.getItem(storageKey)) || [];
+          const updatedLessons = savedLessons.map(lesson => lesson.id === modId ? { ...lesson, status: 'COMPLETED' } : lesson);
+          localStorage.setItem(storageKey, JSON.stringify(updatedLessons));
+        }
       }
 
       let hints = [];
@@ -236,7 +255,24 @@ export default function App() {
 
       setSubmissions([newSubmission]);
       setOverlay({ visible: true, status: isPassed ? 'success' : 'error' });
-      setTimeout(() => { setOverlay({ visible: false }); setSelectedTab('submissions'); }, 1500);
+      setTimeout(() => {
+        setOverlay({ visible: false });
+        setSelectedTab('submissions');
+        // EXAM: Auto-advance to next unanswered problem after correct answer
+        if (isPassed && mode === 'EXAM') {
+          const totalSteps = filteredProblemsList.length;
+          const { statusKey } = getWorkspaceKeys();
+          const latestStatuses = JSON.parse(localStorage.getItem(statusKey)) || [];
+          latestStatuses[currentProblem - 1] = 'passed';
+          // Find next unanswered problem
+          for (let i = 0; i < totalSteps; i++) {
+            if (latestStatuses[i] !== 'passed') {
+              setCurrentProblem(i + 1);
+              return;
+            }
+          }
+        }
+      }, 1500);
     } catch (err) { 
       setOverlay({ visible: true, status: 'error', message: 'Parser Error' });
       setTimeout(() => setOverlay({ visible: false }), 2000);
@@ -244,6 +280,11 @@ export default function App() {
   };
 
   const handleStepChange = (newStep) => {
+    // EXAM: prevent navigating to already-passed problems (locked)
+    const mode = localStorage.getItem('workspaceMode') || 'COURSE';
+    if (mode === 'EXAM' && problemStatuses[newStep - 1] === 'passed') {
+      return; // Cannot go back to passed exam problems
+    }
     if (newStep > currentProblem && problemStatuses[currentProblem - 1] !== 'passed') {
       updateProblemStatus(currentProblem - 1, 'skipped');
     }
@@ -279,7 +320,7 @@ export default function App() {
       </div>
 
       {overlay.visible && <FeedbackOverlay isVisible={overlay.visible} />}
-      {showLoginModal && !isLoggedIn && <Login onLogin={handleLogin} onClose={() => setShowLoginModal(false)} />}
+      {showLoginModal && !isLoggedIn && <Login onLogin={handleLogin} onClose={() => { setShowLoginModal(false); setLoginError(''); }} loginError={loginError} />}
       <Header currentPage={currentPage} onNavigate={setCurrentPage} isLoggedIn={isLoggedIn} userData={user} onLogout={handleLogout} onLoginClick={() => setShowLoginModal(true)} />
 
       <main className="container mx-auto px-4 py-12 relative z-10 min-h-screen">
@@ -295,13 +336,13 @@ export default function App() {
                   <h1 className="text-6xl font-black tracking-tighter uppercase ">SQL Assignment</h1>
                   <button onClick={() => setCurrentPage('coursetext')} className="bg-white border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_#000] hover:-translate-y-1 transition-all flex items-center gap-2 cursor-pointer">← Back to Lesson</button>
                 </div>
-                <StepIndicator totalSteps={filteredProblemsList.length || 1} currentStep={currentProblem} onStepChange={handleStepChange} statuses={problemStatuses} />
+                <StepIndicator totalSteps={filteredProblemsList.length || 1} currentStep={currentProblem} onStepChange={handleStepChange} statuses={problemStatuses} lockedSteps={workspaceMode === 'EXAM' ? problemStatuses.map(s => s === 'passed') : []} />
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-10">
                   <LeftPanel problemData={problemData} currentStep={currentProblem} />
                   <div className="lg:col-span-2 relative z-20">
                     <Tabs selectedTab={selectedTab} onTabChange={setSelectedTab} />
                     {selectedTab === 'description' ? (
-                      <RightPanel problemData={problemData} currentStep={currentProblem} onSubmit={handleSubmit} />
+                      <RightPanel problemData={problemData} currentStep={currentProblem} onSubmit={handleSubmit} isExamLocked={workspaceMode === 'EXAM' && problemStatuses[currentProblem - 1] === 'passed'} />
                     ) : (
                       <MySubmissions submissions={submissions} problemData={problemData} />
                     )}

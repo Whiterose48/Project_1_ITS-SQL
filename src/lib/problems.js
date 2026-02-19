@@ -265,9 +265,113 @@ export const problems = rawProblems.map(p => {
     `อ้างอิงข้อมูลจากตารางหลัก: ${p.table}`
   ];
 
+  // Auto-derive constraints from golden query & requirements
+  const constraints = p.constraints || deriveConstraints(p);
+
+  // Auto-detect order sensitivity
+  const orderSensitive = p.orderSensitive !== undefined
+    ? p.orderSensitive
+    : /ORDER\s+BY/i.test(p.goldenQuery);
+
   return {
     ...p,
     requirements: reqs,
+    constraints,
+    orderSensitive,
     columns: p.table && dbSchema[p.table] ? dbSchema[p.table] : []
   };
 });
+
+/**
+ * Auto-derive constraints from golden query.
+ * Inspects the query structure to generate appropriate constraints
+ * that enforce correct methodology, not just correct output.
+ */
+function deriveConstraints(problem) {
+  const gq = problem.goldenQuery || '';
+  const upper = gq.toUpperCase();
+  const constraints = [];
+
+  // DISTINCT enforcement
+  if (/\bDISTINCT\b/i.test(gq)) {
+    constraints.push({ type: 'requireDistinct' });
+  }
+
+  // ORDER BY enforcement
+  if (/\bORDER\s+BY\b/i.test(gq)) {
+    constraints.push({ type: 'requireOrderBy' });
+  }
+
+  // GROUP BY enforcement
+  if (/\bGROUP\s+BY\b/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'GROUP BY' });
+  }
+
+  // HAVING enforcement
+  if (/\bHAVING\b/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'HAVING' });
+  }
+
+  // CONCAT enforcement
+  if (/\bCONCAT\s*\(/i.test(gq)) {
+    constraints.push({ type: 'requireFunction', fn: 'CONCAT' });
+  }
+
+  // COUNT enforcement
+  if (/\bCOUNT\s*\(/i.test(gq)) {
+    constraints.push({ type: 'requireFunction', fn: 'COUNT' });
+  }
+
+  // NATURAL JOIN enforcement
+  if (/\bNATURAL\s+JOIN\b/i.test(gq)) {
+    constraints.push({ type: 'requireJoinType', joinType: 'NATURAL' });
+  }
+
+  // JOIN USING enforcement
+  if (/\bJOIN\b.*\bUSING\b/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'USING' });
+  }
+
+  // BETWEEN enforcement
+  if (/\bBETWEEN\b/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'BETWEEN' });
+  }
+
+  // NOT BETWEEN enforcement
+  if (/\bNOT\s+BETWEEN\b/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'NOT BETWEEN' });
+  }
+
+  // IN enforcement
+  if (/\bIN\s*\(/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'IN' });
+  }
+
+  // LIKE enforcement
+  if (/\bLIKE\b/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'LIKE' });
+  }
+
+  // IS NULL enforcement
+  if (/\bIS\s+NULL\b/i.test(gq) && !/\bIS\s+NOT\s+NULL\b/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'IS NULL' });
+  }
+
+  // IS NOT NULL enforcement
+  if (/\bIS\s+NOT\s+NULL\b/i.test(gq)) {
+    constraints.push({ type: 'requireKeyword', keyword: 'IS NOT NULL' });
+  }
+
+  // Alias enforcement from requirements
+  if (problem.requirements) {
+    for (const req of problem.requirements) {
+      // Match patterns like: ตั้งชื่อ ... เป็น 'xxx' or ตั้งชื่อ ... ว่า xxx
+      const aliasMatch = req.match(/ตั้งชื่อ.*(?:เป็น|ว่า)\s+['"`]?([^'"`\s]+)['"`]?/);
+      if (aliasMatch) {
+        constraints.push({ type: 'requireAlias', alias: aliasMatch[1] });
+      }
+    }
+  }
+
+  return constraints;
+}

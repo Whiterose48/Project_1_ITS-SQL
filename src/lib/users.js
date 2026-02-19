@@ -18,5 +18,12 @@ export const users = [
 
 // ฟังก์ชันจำลองการค้นหาผู้ใช้ (คล้ายกับการเรียก API LDAP ในอนาคต)
 export const authenticateUser = (id, password) => {
-  return users.find(u => u.id === id && u.password === password);
+  const user = users.find(u => u.id === id);
+  if (!user) {
+    return { success: false, error: 'ไม่พบ Student ID นี้ในระบบ' };
+  }
+  if (user.password !== password) {
+    return { success: false, error: 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' };
+  }
+  return { success: true, user };
 };

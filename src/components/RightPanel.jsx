@@ -43,7 +43,7 @@ const SQL_KEYWORDS = [
   { label: 'MAX', kind: 'Function', insertText: 'MAX', detail: 'ค่ามากที่สุด' }
 ];
 
-export default function RightPanel({ problemData, currentStep, onStepChange, onSubmit }) {
+export default function RightPanel({ problemData, currentStep, onStepChange, onSubmit, isExamLocked = false }) {
   const [code, setCode] = useState('-- Write your SQL query here --');
   const [isRunning, setIsRunning] = useState(false);
   const editorRef = useRef(null);
@@ -137,7 +137,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   };
 
   const handleRunQuery = async () => {
-    if (isRunning || isTimeUp) return; // ดักเผื่อบั๊ก
+    if (isRunning || isTimeUp || isExamLocked) return;
     setIsRunning(true);
     try {
       if (typeof onSubmit === 'function') {
@@ -151,7 +151,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   };
 
   const handleResetCode = () => {
-    if (isTimeUp) return; // ถ้าเวลาหมด ห้ามรีเซ็ตด้วย!
+    if (isTimeUp || isExamLocked) return;
     if(window.confirm('Are you sure you want to reset your code? This cannot be undone.')) {
       const defaultCode = '-- Write your SQL query here --';
       setCode(defaultCode);
@@ -162,7 +162,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   return (
     <div className="space-y-6 relative z-10">
       <div className="bg-[#0f172a] rounded-[24px] overflow-hidden border-[4px] border-slate-900 shadow-[8px_8px_0px_0px_#1e293b] flex flex-col">
-        <div className={`bg-slate-800 text-white px-6 py-4 flex items-center justify-between border-b-[4px] border-slate-900 shrink-0 transition-colors ${isTimeUp ? 'bg-red-900/50' : ''}`}>
+        <div className={`bg-slate-800 text-white px-6 py-4 flex items-center justify-between border-b-[4px] border-slate-900 shrink-0 transition-colors ${isTimeUp ? 'bg-red-900/50' : ''} ${isExamLocked ? 'bg-emerald-900/50' : ''}`}>
           <div className="flex items-center gap-4">
             <div className="flex gap-2">
               <div className="w-3.5 h-3.5 bg-red-500 border-2 border-slate-900 rounded-sm"></div>
@@ -171,6 +171,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
             </div>
             <h3 className="text-lg font-black tracking-widest ml-2 font-mono uppercase text-slate-200">
               Query Editor {isTimeUp && <span className="text-red-400 ml-2 animate-pulse">(LOCKED)</span>}
+              {isExamLocked && <span className="text-emerald-400 ml-2">(SUBMITTED ✓)</span>}
             </h3>
           </div>
           
@@ -189,9 +190,9 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
         </div>
         
         <div className="h-[450px] w-full relative bg-[#1e1e1e]">
-          {isTimeUp && (
+          {(isTimeUp || isExamLocked) && (
              <div className="absolute inset-0 z-50 bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center">
-                 {/* แผ่นกระจกใสๆ มาบัง Editor ไม่ให้กดได้เลย */}
+                 {isExamLocked && <span className="bg-emerald-500 text-white font-black text-sm uppercase tracking-widest px-6 py-3 rounded-xl border-[3px] border-emerald-700 shadow-[4px_4px_0px_0px_#064e3b]">✓ คำตอบถูกต้อง - ส่งเเล้ว</span>}
              </div>
           )}
           <Editor
@@ -218,7 +219,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
               suggest: { showWords: false },
               scrollbar: { alwaysConsumeMouseWheel: false },
               fixedOverflowWidgets: true,
-              readOnly: isTimeUp, // ✨ ล็อคไม่ให้พิมพ์เพิ่มได้ถ้าเวลาหมด
+              readOnly: isTimeUp || isExamLocked, // ✨ ล็อคไม่ให้พิมพ์เพิ่มได้ถ้าเวลาหมดหรือข้อสอบผ่านเเล้ว
             }}
           />
         </div>
@@ -227,15 +228,22 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
       {/* ✨ เปลี่ยนปุ่มเป็นปุ่ม "หมดเวลา" ถ้าครบ 1 ชั่วโมง */}
       <button
         onClick={handleRunQuery}
-        disabled={isRunning || isTimeUp}
+        disabled={isRunning || isTimeUp || isExamLocked}
         className={`relative z-10 w-full flex items-center justify-center gap-3 py-6 font-black text-xl tracking-widest uppercase transition-all duration-150 rounded-[20px] border-[4px] border-slate-900 text-white 
-          ${isTimeUp 
+          ${isExamLocked
+            ? 'bg-emerald-600 shadow-[8px_8px_0px_0px_#064e3b] cursor-not-allowed opacity-90'
+            : isTimeUp 
             ? 'bg-red-600 shadow-[8px_8px_0px_0px_#7f1d1d] cursor-not-allowed opacity-90' 
             : 'bg-blue-600 shadow-[8px_8px_0px_0px_#000066] hover:-translate-y-1 hover:shadow-[10px_10px_0px_0px_#000066] active:translate-y-[4px] active:translate-x-[4px] active:shadow-none cursor-pointer'
           }
         `}
       >
-        {isTimeUp ? (
+        {isExamLocked ? (
+          <>
+            <span className="text-2xl drop-shadow-md">✓</span>
+            <span className="drop-shadow-md pointer-events-none">Already Submitted</span>
+          </>
+        ) : isTimeUp ? (
           <>
             <span className="text-2xl drop-shadow-md">🔒</span>
             <span className="drop-shadow-md pointer-events-none">TIME IS UP</span>

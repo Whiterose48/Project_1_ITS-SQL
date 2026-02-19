@@ -17,8 +17,7 @@ export default function MySubmissions({ submissions, problemData }) {
   }
 
   const latestSubmission = submissions[0];
-  const hasSemicolon = latestSubmission.code.trim().endsWith(';');
-  const isPassed = latestSubmission.passed && hasSemicolon;
+  const isPassed = latestSubmission.passed;
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
