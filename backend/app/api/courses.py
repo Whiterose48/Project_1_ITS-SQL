@@ -16,7 +16,7 @@ from app.schemas.course import (
     ModuleCreate, ModuleOut,
     LessonCreate, LessonOut,
 )
-from app.middleware.auth import get_current_user, require_instructor, require_ta
+from app.middleware.auth import get_current_user, require_instructor, require_ta, require_authorized_instructor
 
 router = APIRouter(prefix="/courses", tags=["Courses"])
 
@@ -65,10 +65,10 @@ async def list_courses(
 @router.post("", response_model=CourseOut, status_code=status.HTTP_201_CREATED)
 async def create_course(
     payload: CourseCreate,
-    user: User = Depends(require_instructor),
+    user: User = Depends(require_authorized_instructor),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new course. Instructor/Admin only."""
+    """Create a new course. Authorized Instructor/Admin only."""
     existing = await db.execute(select(Course).where(Course.code == payload.code))
     if existing.scalar_one_or_none():
         raise HTTPException(400, "Course code already exists")

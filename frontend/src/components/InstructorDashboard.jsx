@@ -58,7 +58,7 @@ export default function InstructorDashboard({ onNavigate, user }) {
             <div className="h-2 w-12 bg-[#FF9900] border-2 border-slate-900"></div>
             <p className="font-mono text-xs font-black text-[#FF9900] tracking-widest uppercase">Instructor Panel</p>
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-slate-900 tracking-tighter uppercase">Dashboard</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tighter uppercase">Dashboard</h1>
         </div>
         <div className="flex flex-wrap gap-3">
           <button onClick={() => onNavigate('coursemanage')} className="cursor-pointer bg-white border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all">
@@ -101,7 +101,7 @@ export default function InstructorDashboard({ onNavigate, user }) {
                     <span className="text-xl sm:text-2xl">{stat.icon}</span>
                     <div className={`w-3 h-3 ${stat.color} rounded-full`}></div>
                   </div>
-                  <p className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 font-mono">{stat.value}</p>
+                  <p className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 font-mono">{stat.value}</p>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{stat.label}</p>
                 </div>
               </div>
@@ -179,8 +179,8 @@ export default function InstructorDashboard({ onNavigate, user }) {
           <div className="absolute inset-0 bg-slate-900 rounded-3xl translate-x-2 translate-y-2"></div>
           <div className="bg-white border-[4px] border-slate-900 rounded-3xl overflow-hidden relative">
             <div className="bg-gradient-to-r from-[#FF9900] to-[#FF6600] px-8 py-6 border-b-[4px] border-slate-900">
-                <h3 className="text-slate-900 font-black uppercase tracking-widest text-2xl flex items-center gap-3">
-                <span className="text-2xl sm:text-3xl">🏆</span> Student Leaderboard
+                <h3 className="text-slate-900 font-black uppercase tracking-widest text-xl flex items-center gap-3">
+                <span className="text-xl sm:text-2xl">🏆</span> Student Leaderboard
               </h3>
             </div>
             <div className="divide-y-[3px] divide-slate-100">
@@ -192,7 +192,7 @@ export default function InstructorDashboard({ onNavigate, user }) {
                       {student.rank <= 3 ? ['🥇','🥈','🥉'][student.rank-1] : `#${student.rank}`}
                     </div>
                     <div>
-                      <p className="font-black text-xl text-slate-900">{student.name}</p>
+                      <p className="font-black text-base text-slate-900">{student.name}</p>
                       <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{student.problems} problems solved</p>
                     </div>
                   </div>
@@ -217,7 +217,7 @@ export default function InstructorDashboard({ onNavigate, user }) {
       {activeSection === 'announcements' && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter">Announcements</h3>
+            <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Announcements</h3>
             <button className="cursor-pointer bg-[#FF9900] text-[#000066] border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all">
               + New Announcement
             </button>

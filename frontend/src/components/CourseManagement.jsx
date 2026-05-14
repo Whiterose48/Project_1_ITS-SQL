@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Button from './ui/Button';
 
 const MOCK_COURSES = [
   { 
@@ -34,14 +35,14 @@ export default function CourseManagement({ onNavigate }) {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="space-y-2">
-          <button onClick={() => onNavigate('instructor')} className="cursor-pointer text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
+          <Button onClick={() => onNavigate('instructor')} className="text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors px-3 py-2 bg-transparent" ariaLabel="กลับไปยังแดชบอร์ด">
             ← Back to Dashboard
-          </button>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-slate-900 tracking-tighter uppercase">Course Management</h1>
+          </Button>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter uppercase">Course Management</h1>
         </div>
-        <button onClick={() => setShowCreateModal(true)} className="cursor-pointer bg-[#FF9900] text-[#000066] border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all">
+        <Button onClick={() => setShowCreateModal(true)} className="bg-[#FF9900] text-[#000066] border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all" ariaLabel="สร้างคอร์สใหม่">
           + Create Course
-        </button>
+        </Button>
       </div>
 
       {/* View Tabs */}
@@ -74,12 +75,12 @@ export default function CourseManagement({ onNavigate }) {
                         <span className="bg-emerald-400 text-slate-900 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest border-2 border-slate-900">{course.status}</span>
                         <span className="bg-white/20 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{course.semester}</span>
                       </div>
-                      <h3 className="text-4xl sm:text-5xl font-black uppercase tracking-tighter">{course.name}</h3>
+                      <h3 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter">{course.name}</h3>
                       <p className="font-mono text-sm text-blue-200">ID: {course.id} | Code: {course.code}</p>
                     </div>
                     <div className="flex flex-wrap gap-3">
-                      <button className="cursor-pointer bg-white text-[#000066] px-5 py-2.5 rounded-xl border-[3px] border-slate-900 font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#000] hover:-translate-y-0.5 transition-all">Edit</button>
-                      <button className="cursor-pointer bg-[#FF9900] text-[#000066] px-5 py-2.5 rounded-xl border-[3px] border-slate-900 font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#000] hover:-translate-y-0.5 transition-all">Manage</button>
+                      <Button className="bg-white text-[#000066] px-5 py-2.5 rounded-xl border-[3px] border-slate-900 font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#000] hover:-translate-y-0.5 transition-all" ariaLabel={`แก้ไข ${course.name}`}>Edit</Button>
+                      <Button className="bg-[#FF9900] text-[#000066] px-5 py-2.5 rounded-xl border-[3px] border-slate-900 font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#000] hover:-translate-y-0.5 transition-all" ariaLabel={`จัดการ ${course.name}`}>Manage</Button>
                     </div>
                   </div>
                 </div>
@@ -94,7 +95,7 @@ export default function CourseManagement({ onNavigate }) {
                     ].map((stat, i) => (
                       <div key={i} className="bg-slate-50 border-[3px] border-slate-200 rounded-xl p-4 text-center">
                         <span className="text-2xl">{stat.icon}</span>
-                        <p className="font-black font-mono text-2xl text-slate-900 mt-1">{stat.value}</p>
+                        <p className="font-black font-mono text-xl text-slate-900 mt-1">{stat.value}</p>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
                       </div>
                     ))}
@@ -117,7 +118,7 @@ export default function CourseManagement({ onNavigate }) {
                             <p className="font-bold text-sm text-slate-700">{ta}</p>
                           </div>
                         ))}
-                        <button className="cursor-pointer text-xs font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors">+ Add TA</button>
+                        <Button className="text-xs font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-colors bg-transparent px-2 py-1" ariaLabel={`เพิ่ม TA ให้ ${course.name}`}>+ Add TA</Button>
                       </div>
                     </div>
                   </div>
@@ -132,10 +133,8 @@ export default function CourseManagement({ onNavigate }) {
       {activeView === 'modules' && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter">Curriculum Modules</h3>
-            <button onClick={() => setShowModuleModal(true)} className="cursor-pointer bg-[#FF9900] text-[#000066] border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all">
-              + Add Module
-            </button>
+            <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Curriculum Modules</h3>
+            <Button onClick={() => setShowModuleModal(true)} className="bg-[#FF9900] text-[#000066] border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all" ariaLabel="เพิ่มโมดูล">+ Add Module</Button>
           </div>
 
           <div className="relative">
@@ -189,10 +188,8 @@ export default function CourseManagement({ onNavigate }) {
       {activeView === 'datasets' && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter">SQL Datasets</h3>
-            <button onClick={() => setShowDatasetModal(true)} className="cursor-pointer bg-[#FF9900] text-[#000066] border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all">
-              + Upload Dataset
-            </button>
+            <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tighter">SQL Datasets</h3>
+            <Button onClick={() => setShowDatasetModal(true)} className="bg-[#FF9900] text-[#000066] border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all" ariaLabel="อัปโหลดชุดข้อมูล">+ Upload Dataset</Button>
           </div>
 
           <div className="relative">
@@ -207,11 +204,11 @@ export default function CourseManagement({ onNavigate }) {
                   <div className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-slate-50 rounded-lg p-3 text-center">
-                        <p className="font-black font-mono text-2xl text-slate-900">10</p>
+                        <p className="font-black font-mono text-xl text-slate-900">10</p>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tables</p>
                       </div>
                       <div className="bg-slate-50 rounded-lg p-3 text-center">
-                        <p className="font-black font-mono text-2xl text-slate-900">81</p>
+                        <p className="font-black font-mono text-xl text-slate-900">81</p>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Problems</p>
                       </div>
                     </div>
@@ -224,19 +221,19 @@ export default function CourseManagement({ onNavigate }) {
                       </div>
                     </div>
                     <div className="flex gap-3 pt-2">
-                      <button className="cursor-pointer flex-1 bg-slate-900 text-white py-2.5 rounded-xl border-[3px] border-slate-900 font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition-colors">Download</button>
-                      <button className="cursor-pointer flex-1 bg-white py-2.5 rounded-xl border-[3px] border-slate-900 font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#000] hover:-translate-y-0.5 transition-all">Preview</button>
+                      <Button className="flex-1 bg-slate-900 text-white py-2.5 rounded-xl border-[3px] border-slate-900 font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition-colors" ariaLabel="ดาวน์โหลดชุดข้อมูล">Download</Button>
+                      <Button className="flex-1 bg-white py-2.5 rounded-xl border-[3px] border-slate-900 font-black uppercase text-[10px] tracking-widest shadow-[3px_3px_0px_0px_#000] hover:-translate-y-0.5 transition-all" ariaLabel="ดูตัวอย่างชุดข้อมูล">Preview</Button>
                     </div>
                   </div>
                 </div>
 
                 {/* Add Dataset Card */}
-                <button onClick={() => setShowDatasetModal(true)} 
-                  className="cursor-pointer border-[3px] border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-slate-400 hover:border-slate-900 hover:text-slate-900 transition-all min-h-[300px]">
+                <Button onClick={() => setShowDatasetModal(true)} 
+                  className="border-[3px] border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center gap-4 text-slate-400 hover:border-slate-900 hover:text-slate-900 transition-all min-h-[300px] bg-transparent" ariaLabel="เพิ่มชุดข้อมูลใหม่">
                   <span className="text-4xl sm:text-5xl">📁</span>
                   <p className="font-black uppercase tracking-widest text-sm">Add New Dataset</p>
                   <p className="text-xs font-bold">Upload .sql file or paste schema</p>
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -249,7 +246,7 @@ export default function CourseManagement({ onNavigate }) {
           <div className="relative">
             <div className="absolute inset-0 bg-slate-900 rounded-3xl translate-x-2 translate-y-2"></div>
             <div className="bg-white border-[4px] border-slate-900 rounded-3xl overflow-hidden relative p-8 space-y-8">
-              <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter">Course Settings</h3>
+              <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tighter">Course Settings</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
@@ -310,15 +307,13 @@ export default function CourseManagement({ onNavigate }) {
           <div className="relative max-w-lg w-full">
             <div className="absolute inset-0 bg-slate-900 rounded-3xl translate-x-3 translate-y-3"></div>
             <div className="bg-white border-[4px] border-slate-900 rounded-3xl p-10 relative space-y-6">
-              <button onClick={() => setShowCreateModal(false)} className="cursor-pointer absolute -top-4 -right-4 bg-white border-[3px] border-slate-900 w-10 h-10 rounded-xl font-black text-xl hover:bg-red-500 hover:text-white shadow-[4px_4px_0px_0px_#000]">✕</button>
-              <h3 className="text-2xl font-black uppercase tracking-tighter">Create New Course</h3>
+              <Button onClick={() => setShowCreateModal(false)} className="absolute -top-4 -right-4 bg-white border-[3px] border-slate-900 w-10 h-10 rounded-xl font-black text-xl hover:bg-red-500 hover:text-white shadow-[4px_4px_0px_0px_#000]" ariaLabel="ปิด">✕</Button>
+              <h3 className="text-xl font-black uppercase tracking-tighter">Create New Course</h3>
               <div className="space-y-4">
                 <input placeholder="Course Name" className="w-full bg-slate-50 border-[3px] border-slate-900 p-4 rounded-xl font-bold placeholder:text-slate-300 focus:outline-none focus:border-[#FF9900]" />
                 <input placeholder="Course ID (e.g. 06070999)" className="w-full bg-slate-50 border-[3px] border-slate-900 p-4 rounded-xl font-bold font-mono placeholder:text-slate-300 focus:outline-none focus:border-[#FF9900]" />
                 <input placeholder="Access Code" className="w-full bg-slate-50 border-[3px] border-slate-900 p-4 rounded-xl font-bold font-mono placeholder:text-slate-300 focus:outline-none focus:border-[#FF9900]" />
-                <button className="cursor-pointer w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-[5px_5px_0px_0px_#FF9900] hover:-translate-y-1 transition-all">
-                  Create Course
-                </button>
+                <Button className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase text-xs tracking-widest shadow-[5px_5px_0px_0px_#FF9900] hover:-translate-y-1 transition-all" ariaLabel="สร้างคอร์ส">Create Course</Button>
               </div>
             </div>
           </div>

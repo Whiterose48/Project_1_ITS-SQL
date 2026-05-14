@@ -60,7 +60,7 @@ export default function AdminPanel({ onNavigate }) {
             ← Back to Dashboard
           </button>
           <div className="flex items-center gap-4">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-slate-900 tracking-tighter uppercase">Admin Panel</h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter uppercase">Admin Panel</h1>
             <span className="bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full border-2 border-slate-900 uppercase tracking-widest">Admin Only</span>
           </div>
         </div>
@@ -167,7 +167,7 @@ export default function AdminPanel({ onNavigate }) {
                 <div className="absolute inset-0 bg-slate-900 rounded-2xl translate-x-1.5 translate-y-1.5"></div>
                 <div className={`bg-white border-[3px] border-slate-900 rounded-2xl p-5 relative`}>
                   <span className="text-2xl">{stat.icon}</span>
-                  <p className="font-black font-mono text-2xl text-slate-900 mt-2">{stat.value}</p>
+                  <p className="font-black font-mono text-xl text-slate-900 mt-2">{stat.value}</p>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{stat.label}</p>
                 </div>
               </div>
@@ -353,7 +353,7 @@ export default function AdminPanel({ onNavigate }) {
             <div className="absolute inset-0 bg-slate-900 rounded-3xl translate-x-3 translate-y-3"></div>
             <div className="bg-white border-[4px] border-slate-900 rounded-3xl p-10 relative space-y-6">
               <button onClick={() => setShowEditModal(null)} className="cursor-pointer absolute -top-4 -right-4 bg-white border-[3px] border-slate-900 w-10 h-10 rounded-xl font-black text-xl hover:bg-red-500 hover:text-white shadow-[4px_4px_0px_0px_#000]">✕</button>
-              <h3 className="text-2xl font-black uppercase tracking-tighter">Edit User</h3>
+              <h3 className="text-xl font-black uppercase tracking-tighter">Edit User</h3>
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Name</label>

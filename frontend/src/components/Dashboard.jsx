@@ -58,12 +58,12 @@ export default function Dashboard({ onNavigate, user }) {
   return (
     <div className="max-w-[1450px] mx-auto space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-32 pt-6 sm:pt-10 px-4 sm:px-6 text-left">
       <div className="relative group px-2">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-black text-[#1e293b] tracking-tighter uppercase leading-none">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-[#1e293b] tracking-tighter uppercase leading-none">
           <span className="text-[#FF9900]">
             {(user?.name || user?.id || 'STUDENT').toUpperCase()}
           </span> DASHBOARD
         </h1>
-        <p className="text-base sm:text-lg md:text-xl font-bold text-slate-400 mt-2 sm:mt-3 uppercase tracking-[0.15em] sm:tracking-[0.3em]">
+        <p className="text-xs sm:text-sm md:text-base font-bold text-slate-400 mt-2 sm:mt-3 uppercase tracking-[0.15em] sm:tracking-[0.3em]">
           ID: {user?.id?.toUpperCase() || 'N/A'} • Enrolled Courses & Active Modules
         </p>
       </div>
@@ -72,8 +72,8 @@ export default function Dashboard({ onNavigate, user }) {
         <div className="bg-white border-[3px] sm:border-[4px] border-slate-900 shadow-[8px_8px_0px_0px_#000] sm:shadow-[12px_12px_0px_0px_#000] rounded-3xl overflow-hidden">
           <div className="p-10 sm:p-16 md:p-24 text-center space-y-6 sm:space-y-8">
             <div className="text-5xl sm:text-7xl md:text-8xl">📚</div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 uppercase tracking-tighter">No Courses Enrolled</h2>
-            <p className="text-lg sm:text-xl md:text-2xl font-bold text-slate-400 max-w-lg mx-auto">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 uppercase tracking-tighter">No Courses Enrolled</h2>
+            <p className="text-base sm:text-lg font-bold text-slate-400 max-w-lg mx-auto">
               You haven't enrolled in any course yet. Go to the Courses page to enroll and start learning!
             </p>
             <button
@@ -91,7 +91,7 @@ export default function Dashboard({ onNavigate, user }) {
           <div className="bg-white border-[3px] sm:border-[4px] border-slate-900 shadow-[8px_8px_0px_0px_#000] sm:shadow-[12px_12px_0px_0px_#000] rounded-3xl overflow-hidden">
             <div className="bg-[#000066] p-4 sm:p-6 border-b-[3px] sm:border-b-[4px] border-slate-900 flex items-center gap-3 sm:gap-4 text-white">
               <span className="text-3xl sm:text-4xl">📖</span>
-              <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase tracking-widest">Enrolled Courses</h2>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-black uppercase tracking-widest">Enrolled Courses</h2>
             </div>
             <div className="divide-y-[3px] sm:divide-y-[4px] divide-slate-900 bg-white">
               {enrolledCourses.length > 0 ? (
@@ -106,7 +106,7 @@ export default function Dashboard({ onNavigate, user }) {
                               {course.status}
                             </span>
                           </div>
-                          <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-800 leading-none uppercase tracking-tight max-w-2xl">{course.name}</h3>
+                          <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-800 leading-none uppercase tracking-tight max-w-2xl">{course.name}</h3>
                         </div>
                       </div>
                       <div className="flex flex-col justify-center shrink-0 w-full md:w-64">
@@ -142,7 +142,7 @@ export default function Dashboard({ onNavigate, user }) {
               {deadlines.map((item, idx) => (
                 <div key={idx} className="p-5 sm:p-8 bg-white transition-colors hover:bg-slate-50">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-black text-base sm:text-lg md:text-xl text-[#1e293b] uppercase tracking-tight">{item.title}</h4>
+                    <h4 className="font-black text-sm sm:text-base text-[#1e293b] uppercase tracking-tight">{item.title}</h4>
                     <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000] ${item.tagCol}`}>
                       {item.tag}
                     </span>

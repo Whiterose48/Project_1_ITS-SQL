@@ -17,11 +17,18 @@ import ProblemManagement from './components/ProblemManagement';
 import AdminPanel from './components/AdminPanel';
 import { dbManager } from './lib/db-manager';
 import { problems } from './lib/problems';
-import { signOutUser } from './lib/auth';
 import { Verifier } from './lib/verifier';
 import { HintEngine } from './lib/hint-engine';
  
-import botIcon from './assets/bot.png'; 
+import botIcon from './assets/bot.png';
+
+// ── Authorized Instructors ─────────────────────────────────────
+const AUTHORIZED_INSTRUCTORS = [
+  'ผศ.ดร.กนกวรรณ อัจฉริยะชาญวณิช',
+  'ดร.ศิรสิทธิ์ โล่ชนะจิต',
+  'นายพชร พรอโนทัย',
+  'นายณัฐวีร์ เแนกำพล',
+]; 
 
 export default function App() {
   const isFreshEntry = !sessionStorage.getItem('is_initialized');
@@ -53,13 +60,23 @@ export default function App() {
   const isPopstateRef = useRef(false);
 
   const navigateTo = useCallback((page) => {
+    // Access control for instructor page
+    if (page === 'instructor' || page === 'coursemanage' || page === 'problems') {
+      if (!user || user.role !== 'instructor') {
+        console.warn('Access denied: Not an instructor');
+        return;
+      }
+      // Backend already validated instructor authorization during registration
+      // So if they have instructor role, they're authorized
+    }
+    
     setCurrentPage(page);
     if (!isPopstateRef.current) {
       const url = page === 'home' ? '/' : `/${page}`;
       window.history.pushState({ page }, '', url);
     }
     isPopstateRef.current = false;
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     // Set initial history state
@@ -82,7 +99,8 @@ export default function App() {
   const [workspaceMode, setWorkspaceMode] = useState(() => localStorage.getItem('workspaceMode') || 'COURSE');
 
   const handleLogout = useCallback(() => {
-    signOutUser(); // handles Firebase signOut + GIS revoke + clearAuth
+    // ลบ JWT token + clear session (แทน Firebase signOutUser)
+    localStorage.removeItem('its_token');
     setUser(null);
     navigateTo('home'); 
     sessionStorage.removeItem('userData');
@@ -351,8 +369,8 @@ export default function App() {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white border-[5px] border-slate-900 shadow-[12px_12px_0px_0px_#ef4444] p-10 rounded-[32px] max-w-md w-full text-center space-y-6">
             <div className="text-6xl animate-bounce">⚠️</div>
-            <h3 className="text-3xl font-black uppercase tracking-tighter text-slate-900">Session Expiring</h3>
-            <p className="text-slate-600 font-bold text-lg leading-relaxed">ระบบจะ Logout อัตโนมัติในอีก <span className="text-red-600 font-black text-2xl font-mono underline decoration-4 underline-offset-4">{countdown}</span> วินาที</p>
+            <h3 className="text-2xl font-black uppercase tracking-tighter text-slate-900">Session Expiring</h3>
+            <p className="text-slate-600 font-bold text-base leading-relaxed">ระบบจะ Logout อัตโนมัติในอีก <span className="text-red-600 font-black text-xl font-mono underline decoration-4 underline-offset-4">{countdown}</span> วินาที</p>
             <button onClick={resetTimer} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-[6px_6px_0px_0px_#ef4444] hover:translate-y-1 transition-all active:translate-y-2 active:shadow-none cursor-pointer">Stay Connected</button>
           </div>
         </div>
@@ -374,14 +392,14 @@ export default function App() {
             {currentPage === 'courses' && <Courses onNavigate={navigateTo} user={user} />}
             {currentPage === 'coursetext' && <CourseText onNavigate={navigateTo} user={user} />}
             {currentPage === 'dashboard' && <Dashboard onNavigate={navigateTo} user={user} />}
-            {currentPage === 'instructor' && <InstructorDashboard onNavigate={navigateTo} user={user} />}
-            {currentPage === 'coursemanage' && <CourseManagement onNavigate={navigateTo} />}
-            {currentPage === 'problems' && <ProblemManagement onNavigate={navigateTo} />}
+            {currentPage === 'instructor' && user.role === 'instructor' && <InstructorDashboard onNavigate={navigateTo} user={user} />}
+            {currentPage === 'coursemanage' && user.role === 'instructor' && <CourseManagement onNavigate={navigateTo} />}
+            {currentPage === 'problems' && user.role === 'instructor' && <ProblemManagement onNavigate={navigateTo} />}
             {currentPage === 'admin' && <AdminPanel onNavigate={navigateTo} />}
             {currentPage === 'workspace' && problemData && (
               <div className="animate-in fade-in zoom-in-95 duration-300 pb-32">
                 <div className="mb-10 flex items-center justify-between">
-                  <h1 className="text-6xl font-black tracking-tighter uppercase ">SQL Assignment</h1>
+                  <h1 className="text-4xl sm:text-5xl font-black tracking-tighter uppercase ">SQL Assignment</h1>
                   <button onClick={() => navigateTo('coursetext')} className="bg-white border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_#000] hover:-translate-y-1 transition-all flex items-center gap-2 cursor-pointer">← Back to Lesson</button>
                 </div>
                 <StepIndicator totalSteps={filteredProblemsList.length || 1} currentStep={currentProblem} onStepChange={handleStepChange} statuses={problemStatuses} lockedSteps={workspaceMode === 'EXAM' ? problemStatuses.map(s => s === 'passed') : []} />
@@ -411,12 +429,12 @@ export default function App() {
             <div className={`pointer-events-auto absolute bottom-full right-0 mb-4 transition-all duration-300 origin-bottom-right ${isHintOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
               <div className="bg-white border-[5px] border-slate-900 shadow-[15px_15px_0px_0px_#000] rounded-[40px] w-[90vw] max-w-[850px] relative flex flex-col overflow-hidden">
                 <div className="bg-slate-900 text-white px-10 py-6 flex items-center border-b-[5px] border-slate-900">
-                  <h4 className="font-black text-2xl uppercase tracking-[0.2em]">Agentic Intelligence SQL</h4>
+                  <h4 className="font-black text-xl uppercase tracking-[0.2em]">Agentic Intelligence SQL</h4>
                 </div>
                 <div className="p-10 bg-slate-50">
                   <div className="p-10 bg-slate-800 border-[5px] border-slate-900 rounded-[30px] shadow-[inset_6px_6px_0px_0px_rgba(0,0,0,0.3)] min-h-[220px] flex flex-col justify-center relative">
                     <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 mb-4"><span className="w-3 h-3 bg-emerald-400 rounded-full animate-ping"></span>DEEP ANALYSIS: {hintIndex + 1} / {currentHints.length || 0}</p>
-                    <p className="text-2xl font-bold font-mono leading-relaxed text-slate-100">{currentHints.length > 0 ? currentHints[hintIndex]?.message : "Submit query for analysis."}</p>
+                    <p className="text-xl font-bold font-mono leading-relaxed text-slate-100">{currentHints.length > 0 ? currentHints[hintIndex]?.message : "Submit query for analysis."}</p>
                   </div>
                   {currentHints.length > 1 && (
                     <div className="flex gap-6 mt-8">

@@ -16,13 +16,29 @@ class Settings(BaseSettings):
     # ── Database ──
     DATABASE_URL: str = "sqlite+aiosqlite:///./its_sql.db"
 
-    # ── Google OAuth ──
-    GOOGLE_CLIENT_ID: str = ""
+    # ── LDAP Authentication ──
+    LDAP_URL: str = "ldap://localhost"
+    LDAP_PORT: int = 389
+    LDAP_USE_SSL: bool = False
+    LDAP_BASE_DN: str = "DC=ac,DC=th"
+    LDAP_USER_OU: str = "ou=users"
+
+    # LDAP Branch configurations (Thai university common branches)
+    # Format: branch_code -> display_name
+    LDAP_BRANCHES: dict = {
+        "it": "Information Technology",
+        "eng": "Engineering",
+        "science": "Science",
+        "business": "Business Administration",
+        "architecture": "Architecture",
+        "medicine": "Medicine",
+        "agriculture": "Agriculture",
+    }
 
     # ── CORS ──
     FRONTEND_URL: str = "http://localhost:8080"
 
-    # ── Email domain restriction ──
+    # ── Email domain restriction (fallback for non-LDAP) ──
     ALLOWED_EMAIL_DOMAIN: str = "kmitl.ac.th"
 
     # ── Grading Sandbox ──
@@ -31,6 +47,18 @@ class Settings(BaseSettings):
     SANDBOX_MYSQL_PORT: int = 3306
     SANDBOX_MYSQL_USER: str = "root"
     SANDBOX_MYSQL_PASSWORD: str = ""
+
+    # ── Authorized Instructors ──
+    AUTHORIZED_INSTRUCTORS: list[str] = [
+        "ผศ.ดร.กนกวรรณ อัจฉริยะชาญวณิช",
+        "ดร.ศิรสิทธิ์ โล่ชนะจิต",
+        "นายพชร พรอโนทัย",
+        "นายณัฐวีร์ เแนกำพล",
+    ]
+
+    # ── Supabase (Activity Tracking) ──
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

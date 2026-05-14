@@ -1,41 +1,48 @@
-from pydantic import BaseModel, EmailStr
-from datetime import datetime
-from app.models.user import Role
+import enum
+from datetime import datetime, timezone
+from sqlalchemy import String, Enum, DateTime, Boolean, Text, ARRAY
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from app.database import Base
 
 
-# ── Auth ──
-class GoogleTokenPayload(BaseModel):
-    access_token: str
-    role: str | None = None
+class Role(str, enum.Enum):
+    STUDENT = "student"
+    TA = "ta"
+    INSTRUCTOR = "instructor"
+    ADMIN = "admin"
 
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: "UserOut"
+class User(Base):
+    __tablename__ = "users"
 
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    student_id: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, index=True)
+    role: Mapped[Role] = mapped_column(Enum(Role), default=Role.STUDENT, nullable=False)
+    modules: Mapped[str | None] = mapped_column(Text, nullable=True)   # JSON string e.g. '["sql","python"]'
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-# ── User ──
-class UserOut(BaseModel):
-    id: int
-    email: str
-    name: str
-    student_id: str | None = None
-    role: Role
-    photo_url: str | None = None
-    is_active: bool
-    created_at: datetime
-    last_login: datetime | None = None
+    # Relationships
+    enrollments = relationship("Enrollment", back_populates="user", lazy="selectin")
+    submissions = relationship("Submission", back_populates="user", lazy="selectin")
 
-    model_config = {"from_attributes": True}
+    def modules_list(self) -> list[str]:
+        """Parse modules JSON string → list."""
+        import json
+        if not self.modules:
+            return []
+        try:
+            return json.loads(self.modules)
+        except Exception:
+            return []
 
-
-class UserUpdate(BaseModel):
-    name: str | None = None
-    role: Role | None = None
-    is_active: bool | None = None
-
-
-class UserRoleAssign(BaseModel):
-    email: str
-    role: Role
+    def __repr__(self):
+        return f"<User {self.email} role={self.role}>"

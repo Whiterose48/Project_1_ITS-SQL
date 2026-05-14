@@ -204,7 +204,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
             onMount={handleEditorMount}
             theme="vs-dark"
             loading={
-              <div className="flex h-full w-full items-center justify-center text-emerald-400 font-mono font-bold animate-pulse text-lg">
+              <div className="flex h-full w-full items-center justify-center text-emerald-400 font-mono font-bold animate-pulse text-base">
                 Initializing Database Editor...
               </div>
             }
@@ -229,7 +229,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
       <button
         onClick={handleRunQuery}
         disabled={isRunning || isTimeUp || isExamLocked}
-        className={`relative z-10 w-full flex items-center justify-center gap-3 py-6 font-black text-xl tracking-widest uppercase transition-all duration-150 rounded-[20px] border-[4px] border-slate-900 text-white 
+        className={`relative z-10 w-full flex items-center justify-center gap-3 py-6 font-black text-lg tracking-widest uppercase transition-all duration-150 rounded-[20px] border-[4px] border-slate-900 text-white 
           ${isExamLocked
             ? 'bg-emerald-600 shadow-[8px_8px_0px_0px_#064e3b] cursor-not-allowed opacity-90'
             : isTimeUp 

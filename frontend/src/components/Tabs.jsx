@@ -54,8 +54,8 @@ export default function Tabs({ selectedTab, onTabChange }) {
           <div className="relative w-full max-w-5xl bg-white border-[4px] border-slate-900 shadow-[12px_12px_0px_0px_#000000] rounded-2xl flex flex-col animate-in zoom-in-95 duration-200 overflow-hidden">
             
             <div className="flex items-center justify-between p-4 border-b-[4px] border-slate-900 bg-[#f97316]">
-              <h3 className="text-2xl font-black text-white uppercase tracking-widest flex items-center gap-3 drop-shadow-[2px_2px_0px_#000000]">
-                <span className="text-3xl">🗺️</span> Database Schema
+              <h3 className="text-xl font-black text-white uppercase tracking-widest flex items-center gap-3 drop-shadow-[2px_2px_0px_#000000]">
+                <span className="text-2xl">🗺️</span> Database Schema
               </h3>
               
               <button 

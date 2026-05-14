@@ -65,7 +65,7 @@ export default function LeftPanel({ problemData, currentStep }) {
         </p>
         <div className="relative z-10 flex justify-center items-center">
           {/* ✨ ทำให้เวลาที่ใกล้หมด กระพริบเป็นสีแดงได้ถ้าต้องการ */}
-          <p className={`text-4xl font-black tabular-nums tracking-tighter font-mono drop-shadow-[2px_2px_0px_rgba(255,255,255,0.5)] ${timeLeft === '00h 00m 00s' ? 'text-red-600 animate-pulse' : 'text-slate-900'}`}>
+          <p className={`text-3xl font-black tabular-nums tracking-tighter font-mono drop-shadow-[2px_2px_0px_rgba(255,255,255,0.5)] ${timeLeft === '00h 00m 00s' ? 'text-red-600 animate-pulse' : 'text-slate-900'}`}>
             {timeLeft || '00:00:00'}
           </p>
         </div>
@@ -81,14 +81,14 @@ export default function LeftPanel({ problemData, currentStep }) {
                PROBLEM : {currentStep}
              </span>
           </div>
-          <h2 className="text-4xl font-black text-slate-900 mt-8 leading-[0.9] tracking-tighter uppercase">
+          <h2 className="text-3xl font-black text-slate-900 mt-8 leading-[0.9] tracking-tighter uppercase">
             {problemData.title}
           </h2>
         </div>
 
         <div className="mb-12 relative group">
           <div className="absolute inset-0 bg-blue-500/10 rounded-2xl -rotate-1 group-hover:rotate-0 transition-transform duration-300"></div>
-          <p className="relative z-10 text-slate-800 text-[18px] font-bold leading-relaxed border-l-[8px] border-blue-600 pl-6 py-4">
+          <p className="relative z-10 text-slate-800 text-base font-bold leading-relaxed border-l-[8px] border-blue-600 pl-6 py-4">
             {problemData.description}
           </p>
         </div>

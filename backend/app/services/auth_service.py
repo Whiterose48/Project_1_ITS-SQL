@@ -1,118 +1,89 @@
 """
-Google OAuth service.
-Verifies the Google access token and returns user info.
+app/services/auth_service.py — Auth business logic
 """
-
-import httpx
-import re
+import json
 from datetime import datetime, timezone
+
+import bcrypt
+import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.user import User, Role
-from app.middleware.auth import create_access_token
+from app.schemas.auth import RegisterRequest, LoginRequest
 
 settings = get_settings()
 
-GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
+
+# ── Password helpers ──────────────────────────────────────────
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
-async def verify_google_token(access_token: str) -> dict:
-    """
-    Verify a Google OAuth access token by calling the userinfo endpoint.
-    Returns user info dict or raises an exception.
-    """
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            GOOGLE_USERINFO_URL,
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        if resp.status_code != 200:
-            raise ValueError("Invalid Google access token")
-        return resp.json()
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
-async def google_login(access_token: str, db: AsyncSession, requested_role: str | None = None) -> dict:
-    """
-    Full Google login flow:
-    1. Verify token with Google
-    2. Validate email domain
-    3. Find or create user
-    4. Assign role (use requested_role for NEW users only)
-    5. Return JWT + user data
-    """
-    # Step 1: Verify token
-    google_info = await verify_google_token(access_token)
+# ── JWT helpers ───────────────────────────────────────────────
+def create_token(user: User) -> str:
+    payload = {
+        "sub": str(user.id),
+        "username": user.username,
+        "role": user.role.value,
+        "iat": datetime.now(timezone.utc).timestamp(),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
-    email = google_info.get("email", "").lower()
-    name = google_info.get("name", "")
-    photo = google_info.get("picture", "")
 
-    if not email:
-        raise ValueError("No email returned from Google")
+def decode_token(token: str) -> dict:
+    return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
 
-    # Step 2: Validate domain per role
-    # Student → @kmitl.ac.th only | TA/Instructor → @gmail.com only
-    domain = email.split("@")[-1]
-    is_staff = requested_role and requested_role.lower() in ("ta", "instructor")
-    expected_domain = "gmail.com" if is_staff else settings.ALLOWED_EMAIL_DOMAIN
-    if domain != expected_domain:
-        if is_staff:
-            raise ValueError("Access denied. TA/Instructor ต้องใช้ @gmail.com เท่านั้น")
-        raise ValueError(f"Access denied. Student ต้องใช้ @{settings.ALLOWED_EMAIL_DOMAIN} เท่านั้น")
 
-    # Extract student ID from email
-    local_part = email.split("@")[0]
-    student_id = local_part if re.match(r"^\d{8}$", local_part) else None
+# ── Register ──────────────────────────────────────────────────
+async def register_user(db: AsyncSession, body: RegisterRequest) -> User:
+    # Check duplicate username
+    existing_username = await db.scalar(select(User).where(User.username == body.username))
+    if existing_username:
+        raise ValueError("Username นี้ถูกใช้แล้ว")
 
-    # Step 3: Find or create user
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
+    # Check duplicate email
+    existing_email = await db.scalar(select(User).where(User.email == body.email))
+    if existing_email:
+        raise ValueError("Email นี้ถูกใช้แล้ว")
 
-    if user:
-        # Update last login
-        user.last_login = datetime.now(timezone.utc)
-        if name and not user.name:
-            user.name = name
-        if photo:
-            user.photo_url = photo
-    else:
-        # Create new user — use requested role or default to STUDENT
-        role_map = {"student": Role.STUDENT, "ta": Role.TA, "instructor": Role.INSTRUCTOR, "admin": Role.ADMIN}
-        new_role = role_map.get(requested_role, Role.STUDENT)
-        # Safety: never auto-create admin accounts
-        if new_role == Role.ADMIN:
-            new_role = Role.STUDENT
-        user = User(
-            email=email,
-            name=name or f"Student {local_part}",
-            student_id=student_id,
-            role=new_role,
-            photo_url=photo,
-            last_login=datetime.now(timezone.utc),
-        )
-        db.add(user)
+    # Check instructor authorization
+    if body.role == Role.INSTRUCTOR:
+        if body.name not in settings.AUTHORIZED_INSTRUCTORS:
+            raise ValueError(f"ชื่อ '{body.name}' ไม่ได้รับสิทธิ์เป็นผู้สอน กรุณาติดต่อผู้ดูแลระบบ")
 
+    user = User(
+        username=body.username,
+        password_hash=hash_password(body.password),
+        email=body.email,
+        name=body.name,
+        role=body.role,
+        modules=json.dumps(body.modules, ensure_ascii=False),
+        student_id=body.username if body.role == Role.STUDENT else None,
+    )
+    db.add(user)
     await db.commit()
     await db.refresh(user)
+    return user
 
-    # Step 4: Create JWT
-    token = create_access_token(user.id, user.role.value)
 
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "name": user.name,
-            "student_id": user.student_id,
-            "role": user.role.value,
-            "photo_url": user.photo_url,
-            "display_id": f"IT{user.student_id}" if user.student_id else user.email.split("@")[0],
-            "is_active": user.is_active,
-            "created_at": user.created_at.isoformat(),
-            "last_login": user.last_login.isoformat() if user.last_login else None,
-        },
-    }
+# ── Login ─────────────────────────────────────────────────────
+async def login_user(db: AsyncSession, body: LoginRequest) -> User:
+    user = await db.scalar(select(User).where(User.username == body.username))
+
+    if not user or not verify_password(body.password, user.password_hash):
+        raise ValueError("Username หรือ Password ไม่ถูกต้อง")
+
+    if not user.is_active:
+        raise ValueError("บัญชีนี้ถูกระงับการใช้งาน")
+
+    # Update last_login
+    user.last_login = datetime.now(timezone.utc)
+    await db.commit()
+
+    return user

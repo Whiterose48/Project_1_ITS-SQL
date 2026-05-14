@@ -8,7 +8,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "vite"
+    "start": "vite",
+    "build:ghpages": "VITE_BASE_PATH=/Project_1_ITS-SQL/ vite build",
+    "deploy:ghpages": "npm run build:ghpages && npx gh-pages -d dist"
   },
   "keywords": [
     "sql",

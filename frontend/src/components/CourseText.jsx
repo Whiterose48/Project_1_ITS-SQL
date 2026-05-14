@@ -152,7 +152,7 @@ export default function CourseText({ onNavigate, user }) {
                   <div className="h-2 w-12 bg-[#FF9900] border-2 border-slate-900"></div>
                   <p className="font-mono text-sm font-black text-[#FF9900] tracking-widest uppercase">ID: 06070999</p>
               </div>
-              <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-[0.95] max-w-full drop-shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
+              <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-[0.95] max-w-full drop-shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
                   DATABASE CONCEPT SYSTEM
               </h1>
             </div>
@@ -243,7 +243,7 @@ export default function CourseText({ onNavigate, user }) {
                           {lesson.id}
                         </div>
                         <div className="space-y-1">
-                          <h4 className="font-black uppercase tracking-tight text-2xl text-slate-900 group-hover:text-[#000066] transition-colors leading-none">{displayTitle}</h4>
+                          <h4 className="font-black uppercase tracking-tight text-xl text-slate-900 group-hover:text-[#000066] transition-colors leading-none">{displayTitle}</h4>
                           <p className="text-sm font-bold text-slate-500 line-clamp-1 max-w-xl">{displayDesc}</p>
                         </div>
                       </div>
@@ -258,7 +258,7 @@ export default function CourseText({ onNavigate, user }) {
                               <span className="w-2 h-2 bg-[#FF9900] rounded-full border-2 border-slate-900"></span>
                               {isAssignment ? 'Practice Objectives' : isExam ? 'Examination Criteria' : 'Module Objectives'}
                             </h5>
-                            <p className="text-slate-900 font-bold text-xl leading-relaxed italic border-l-[8px] border-[#FF9900] pl-6 py-4 bg-[#FF9900]/5 rounded-r-2xl">
+                            <p className="text-slate-900 font-bold text-lg leading-relaxed italic border-l-[8px] border-[#FF9900] pl-6 py-4 bg-[#FF9900]/5 rounded-r-2xl">
                               "{displayDesc}. {isExam ? 'คุณมีเวลาทำข้อสอบ 1 ชั่วโมง เมื่อหมดเวลาระบบจะปิดรับคำตอบทันที' : 'ฝึกฝนทักษะการใช้งานจริงเพื่อให้เกิดความเชี่ยวชาญ'}"
                             </p>
                           </div>
@@ -314,7 +314,7 @@ export default function CourseText({ onNavigate, user }) {
                     System_Verification_Success
                   </div>
                   <div>
-                    <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-white leading-none">
+                    <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tight text-white leading-none">
                       EXAMINATION <span className="text-[#38bdf8] block md:inline">RESULT</span>
                     </h2>
                     <div className="flex items-center gap-3 mt-3">
@@ -357,7 +357,7 @@ export default function CourseText({ onNavigate, user }) {
                           <div className={`p-4 border-b-[3px] border-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${bgClass}`}>
                             <div className="flex items-center gap-4">
                               <span className="bg-[#0f172a] text-white w-12 h-12 rounded-xl flex items-center justify-center font-black font-mono text-xl border-[3px] border-slate-900 shadow-[2px_2px_0px_0px_#fff]">{detail.step}</span>
-                              <h3 className={`font-black uppercase tracking-widest text-lg drop-shadow-sm ${detail.status === 'NOT_ATTEMPTED' ? 'text-slate-800' : 'text-[#0f172a]'}`}>{detail.title}</h3>
+                      <span className="text-white font-black uppercase tracking-tight text-lg drop-shadow-sm ${detail.status === 'NOT_ATTEMPTED' ? 'text-slate-800' : 'text-[#0f172a]'}">{detail.title}</span>
                             </div>
                             <div className={`${badgeClass} px-5 py-2 rounded-lg border-[3px] border-slate-900 font-black text-xs uppercase tracking-widest shadow-[3px_3px_0px_0px_#0f172a]`}>{statusText}</div>
                           </div>

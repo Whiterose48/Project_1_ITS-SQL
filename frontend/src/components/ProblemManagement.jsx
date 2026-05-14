@@ -44,7 +44,7 @@ export default function ProblemManagement({ onNavigate }) {
           <button onClick={() => onNavigate('instructor')} className="cursor-pointer text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
             ← Back to Dashboard
           </button>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-slate-900 tracking-tighter uppercase">Problem Management</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter uppercase">Problem Management</h1>
         </div>
         <button onClick={() => setShowCreateModal(true)} className="cursor-pointer bg-[#FF9900] text-[#000066] border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_#000] hover:-translate-y-1 transition-all">
           + Create Problem
@@ -235,7 +235,7 @@ export default function ProblemManagement({ onNavigate }) {
           <div className="relative">
             <div className="absolute inset-0 bg-slate-900 rounded-3xl translate-x-2 translate-y-2"></div>
             <div className="bg-white border-[4px] border-slate-900 rounded-3xl overflow-hidden relative p-8 space-y-6">
-              <h4 className="text-xl font-black uppercase tracking-tighter">Common Mistakes Analysis</h4>
+              <h4 className="text-lg font-black uppercase tracking-tighter">Common Mistakes Analysis</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                   { error: 'Missing semicolon ;', count: 156, icon: '❌' },
@@ -306,7 +306,7 @@ export default function ProblemManagement({ onNavigate }) {
           <div className="relative">
             <div className="absolute inset-0 bg-slate-900 rounded-3xl translate-x-2 translate-y-2"></div>
             <div className="bg-white border-[4px] border-slate-900 rounded-3xl overflow-hidden relative p-8 space-y-6">
-              <h3 className="text-2xl font-black uppercase tracking-tighter">SQL Validation Rules</h3>
+              <h3 className="text-xl font-black uppercase tracking-tighter">SQL Validation Rules</h3>
               <p className="text-slate-500 font-bold">Configure grading rules for auto SQL judge system</p>
               
               <div className="space-y-4">
@@ -349,15 +349,15 @@ export default function ProblemManagement({ onNavigate }) {
                 <button onClick={() => setSelectedProblem(null)} className="cursor-pointer text-white text-xl font-black hover:text-red-400 transition-colors">✕</button>
               </div>
               <div className="p-8 space-y-6">
-                <h4 className="text-2xl font-black text-slate-900">{selectedProblem.title}</h4>
+                <h4 className="text-xl font-black text-slate-900">{selectedProblem.title}</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 rounded-xl p-4">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pass Rate</p>
-                    <p className="font-black font-mono text-3xl text-slate-900">{selectedProblem.passRate}%</p>
+                    <p className="font-black font-mono text-2xl text-slate-900">{selectedProblem.passRate}%</p>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-4">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Submissions</p>
-                    <p className="font-black font-mono text-3xl text-slate-900">{selectedProblem.submissions}</p>
+                    <p className="font-black font-mono text-2xl text-slate-900">{selectedProblem.submissions}</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -378,7 +378,7 @@ export default function ProblemManagement({ onNavigate }) {
             <div className="bg-white border-[4px] border-slate-900 rounded-3xl p-10 relative space-y-6">
               <button onClick={() => setShowCreateModal(false)} className="cursor-pointer absolute top-4 right-4 bg-white border-[3px] border-slate-900 w-10 h-10 rounded-xl font-black text-xl hover:bg-red-500 hover:text-white shadow-[3px_3px_0px_0px_#000]">✕</button>
               
-              <h3 className="text-2xl font-black uppercase tracking-tighter">Create New Problem</h3>
+              <h3 className="text-xl font-black uppercase tracking-tighter">Create New Problem</h3>
               
               <div className="space-y-4">
                 <input placeholder="Problem Title" className="w-full bg-slate-50 border-[3px] border-slate-900 p-4 rounded-xl font-bold placeholder:text-slate-300 focus:outline-none focus:border-[#FF9900]" />

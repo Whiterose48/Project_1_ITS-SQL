@@ -39,24 +39,22 @@ export default function Courses({ onNavigate, user }) {
 
   const handleEnrollSubmit = async (e) => {
     e.preventDefault();
-    if (!user?.id || isEnrolling) return;
+    if (isEnrolling) return;
     setIsEnrolling(true);
     setError('');
 
     try {
-      // Try backend API first
       await enrollInCourse(selectedCourse.id, accessCode);
       const newList = { ...enrolledList, [selectedCourse.id]: true };
-      localStorage.setItem(`user_enrolled_${user.id}`, JSON.stringify(newList));
+      if (user?.id) localStorage.setItem(`user_enrolled_${user.id}`, JSON.stringify(newList));
       setEnrolledList(newList);
       setSelectedCourse(null);
       onNavigate('coursetext');
     } catch (apiErr) {
-      // Fallback: check access code locally (DB101 or ITSSQL2025)
       const validCodes = [selectedCourse.code, 'ITSSQL2025'];
       if (validCodes.includes(accessCode)) {
         const newList = { ...enrolledList, [selectedCourse.id]: true };
-        localStorage.setItem(`user_enrolled_${user.id}`, JSON.stringify(newList));
+        if (user?.id) localStorage.setItem(`user_enrolled_${user.id}`, JSON.stringify(newList));
         setEnrolledList(newList);
         setSelectedCourse(null);
         onNavigate('coursetext');
@@ -71,8 +69,8 @@ export default function Courses({ onNavigate, user }) {
   return (
     <div className="max-w-[1450px] mx-auto space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-32 pt-6 sm:pt-10 px-4 sm:px-6 text-left relative">
       <div className="space-y-2">
-        <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black text-slate-900 tracking-tighter uppercase">Overview Courses</h1>
-        <p className="text-base sm:text-lg md:text-xl font-bold text-slate-400 uppercase tracking-[0.15em] sm:tracking-[0.3em]">Select a module to begin your journey</p>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 tracking-tighter uppercase">Overview Courses</h1>
+        <p className="text-xs sm:text-sm md:text-base font-bold text-slate-400 uppercase tracking-[0.15em] sm:tracking-[0.3em]">Select a module to begin your journey</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-10">
@@ -83,10 +81,10 @@ export default function Courses({ onNavigate, user }) {
               <div className="absolute inset-0 bg-slate-900 rounded-3xl translate-x-2 sm:translate-x-3 translate-y-2 sm:translate-y-3"></div>
               <div className="bg-white border-[3px] sm:border-[4px] border-slate-900 rounded-3xl relative overflow-hidden h-full flex flex-col">
                 <div className={`${course.theme} p-5 sm:p-8 border-b-[3px] sm:border-b-[4px] border-slate-900 text-white relative`}>
-                   <div className="relative z-10 space-y-2">
-                      <span className="bg-white/20 text-[9px] sm:text-[10px] font-black px-2 sm:px-3 py-1 rounded-full uppercase tracking-widest border border-white/30">ID: {course.id}</span>
-                      <h3 className="text-2xl sm:text-3xl md:text-4xl font-black leading-none uppercase tracking-tighter pt-2">{course.name}</h3>
-                   </div>
+                  <div className="relative z-10 space-y-2">
+                    <span className="bg-white/20 text-[9px] sm:text-[10px] font-black px-2 sm:px-3 py-1 rounded-full uppercase tracking-widest border border-white/30">ID: {course.id}</span>
+                    <h3 className="text-xl sm:text-2xl md:text-3xl font-black leading-none uppercase tracking-tighter pt-2">{course.name}</h3>
+                  </div>
                 </div>
                 <div className="p-5 sm:p-8 flex-1 flex flex-col justify-between space-y-6 sm:space-y-8">
                   <div className="space-y-4">

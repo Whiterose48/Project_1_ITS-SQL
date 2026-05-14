@@ -4,8 +4,8 @@ export default function ResultTable({ data }) {
   if (!data || !Array.isArray(data) || data.length === 0) {
     return (
       <div className="bg-slate-50 border-[4px] border-slate-900 shadow-[8px_8px_0px_0px_#000] p-12 text-center relative overflow-hidden">
-        <div className="text-6xl mb-6 filter drop-shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">📂</div>
-        <p className="text-slate-900 text-2xl font-black uppercase tracking-tighter mb-2">No Data Found</p>
+        <div className="text-5xl mb-6 filter drop-shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">📂</div>
+        <p className="text-slate-900 text-xl font-black uppercase tracking-tighter mb-2">No Data Found</p>
         <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Execute a valid query to see results here</p>
       </div>
     );
@@ -45,7 +45,7 @@ export default function ResultTable({ data }) {
             {data.map((row, i) => (
               <tr key={i} className="hover:bg-purple-50 group transition-colors">
                 {columns.map((col) => (
-                  <td key={col} className={`px-6 py-4 text-[16px] font-bold font-mono tabular-nums border-r-[3px] border-slate-900 last:border-r-0 transition-all ${row[col] === null || row[col] === undefined ? 'bg-slate-50/50' : 'text-slate-800'}`}>
+                  <td key={col} className={`px-6 py-4 text-[14px] font-bold font-mono tabular-nums border-r-[3px] border-slate-900 last:border-r-0 transition-all ${row[col] === null || row[col] === undefined ? 'bg-slate-50/50' : 'text-slate-800'}`}>
                     {row[col] === null || row[col] === undefined ? (
                       <div className="flex items-center gap-2 opacity-50">
                         <span className="w-2 h-2 bg-slate-400 rounded-sm"></span>

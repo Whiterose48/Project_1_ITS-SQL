@@ -85,7 +85,7 @@ export default function Header({ currentPage, onNavigate, isLoggedIn, userData, 
           <div className="w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center shrink-0">
             <img src={logoImg} alt="Logo" className="w-full h-full object-contain transition-transform group-hover:scale-110" />
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight uppercase">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight uppercase">
             <span className="text-[#FF9900]">DB</span>LEARN
           </h1>
         </div>

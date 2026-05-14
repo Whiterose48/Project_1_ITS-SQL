@@ -3,6 +3,10 @@
   command = "pnpm install && pnpm run build"
   publish = "dist"
 
+# Environment variables (also set these in Netlify Dashboard → Site Settings → Environment Variables):
+# VITE_API_URL = "https://your-backend-url.com/api"
+# VITE_GOOGLE_CLIENT_ID = "your-google-client-id" (optional, auto-detected)
+
 [[headers]]
   for = "/*"
   [headers.values]

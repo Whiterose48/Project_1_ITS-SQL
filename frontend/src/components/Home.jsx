@@ -12,17 +12,17 @@ export default function Home({ onNavigate }) {
           <div className="inline-block bg-[#FF9900] text-slate-900 font-black px-4 sm:px-5 py-1.5 sm:py-2 border-[2px] sm:border-[3px] border-slate-900 shadow-[2px_2px_0px_0px_#0f172a] sm:shadow-[3px_3px_0px_0px_#0f172a] -rotate-2 mb-4 sm:mb-6 uppercase tracking-widest text-sm sm:text-base">
             Welcome to DBLearn
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white uppercase tracking-tighter mb-4 sm:mb-6 leading-[1.1] drop-shadow-[3px_3px_0px_#000000] sm:drop-shadow-[4px_4px_0px_#000000]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white uppercase tracking-tighter mb-4 sm:mb-6 leading-[1.1] drop-shadow-[3px_3px_0px_#000000] sm:drop-shadow-[4px_4px_0px_#000000]">
             Master SQL & <br/>
             <span className="text-[#00E5FF]">Database Management</span>
           </h1>
-          <p className="text-base sm:text-lg md:text-xl font-bold text-slate-300 max-w-xl leading-relaxed mb-6 sm:mb-10">
+          <p className="text-sm sm:text-base md:text-lg font-bold text-slate-300 max-w-xl leading-relaxed mb-6 sm:mb-10">
             Learn structured query language and database systems from fundamentals to advanced concepts. Build real-world solutions and master data manipulation.
           </p>
           
           <button 
             onClick={() => onNavigate('courses')}
-            className="inline-flex items-center justify-center gap-3 sm:gap-4 bg-[#FF9900] text-[#000066] font-black text-xl sm:text-2xl md:text-3xl uppercase tracking-[0.1em] sm:tracking-[0.15em] px-8 sm:px-14 py-5 sm:py-6 border-[3px] sm:border-[4px] border-slate-900 rounded-xl shadow-[6px_6px_0px_0px_#000000] sm:shadow-[8px_8px_0px_0px_#000000] hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[10px_10px_0px_0px_#000000] sm:hover:shadow-[12px_12px_0px_0px_#000000] active:translate-y-[4px] active:translate-x-[4px] active:shadow-none transition-all"
+            className="inline-flex items-center justify-center gap-3 sm:gap-4 bg-[#FF9900] text-[#000066] font-black text-base sm:text-lg md:text-xl uppercase tracking-[0.1em] sm:tracking-[0.15em] px-6 sm:px-10 py-4 sm:py-5 border-[3px] sm:border-[4px] border-slate-900 rounded-xl shadow-[6px_6px_0px_0px_#000000] sm:shadow-[8px_8px_0px_0px_#000000] hover:-translate-y-1 hover:-translate-x-1 hover:shadow-[10px_10px_0px_0px_#000000] sm:hover:shadow-[12px_12px_0px_0px_#000000] active:translate-y-[4px] active:translate-x-[4px] active:shadow-none transition-all"
           >
             <span>GO TO COURSES</span>
             <span className="text-2xl sm:text-3xl leading-none">🚀</span>
@@ -52,7 +52,7 @@ export default function Home({ onNavigate }) {
 
       <div className="bg-white border-[3px] sm:border-[4px] border-slate-900 shadow-[6px_6px_0px_0px_#0f172a] sm:shadow-[10px_10px_0px_0px_#0f172a] rounded-2xl p-6 sm:p-10 relative">
         <div className="absolute -top-5 sm:-top-6 left-6 sm:left-8 bg-[#FF9900] border-[3px] sm:border-[4px] border-slate-900 px-5 sm:px-8 py-1.5 sm:py-2 rounded-lg shadow-[3px_3px_0px_0px_#0f172a] sm:shadow-[4px_4px_0px_0px_#0f172a]">
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-black uppercase text-slate-900 tracking-widest">What You'll Learn</h2>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-black uppercase text-slate-900 tracking-widest">What You'll Learn</h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 lg:gap-x-20 gap-y-5 sm:gap-y-8 mt-6 sm:mt-8">
@@ -68,7 +68,7 @@ export default function Home({ onNavigate }) {
               <div className="w-8 h-8 flex-shrink-0 bg-slate-900 text-white font-mono font-black rounded-sm flex items-center justify-center border-2 border-slate-900 shadow-[3px_3px_0px_0px_#FF9900] group-hover:bg-[#FF9900] group-hover:text-slate-900 transition-all duration-200">
                 {idx + 1}
               </div>
-              <p className="text-slate-800 font-bold text-lg sm:text-xl tracking-tight border-b-2 border-transparent group-hover:border-slate-900 transition-all pb-1 text-left">
+              <p className="text-slate-800 font-bold text-sm sm:text-base tracking-tight border-b-2 border-transparent group-hover:border-slate-900 transition-all pb-1 text-left">
                 {item}
               </p>
             </div>
@@ -90,11 +90,11 @@ export default function Home({ onNavigate }) {
               />
             </div>
             
-            <h3 className="text-3xl sm:text-4xl font-black text-[#000066] uppercase tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-black text-[#000066] uppercase tracking-tight">
               School of Information Technology
             </h3>
             <div className="space-y-1 border-l-[3px] sm:border-l-[4px] border-[#FF9900] pl-4 sm:pl-5">
-              <p className="text-slate-700 font-black text-lg sm:text-xl md:text-2xl leading-tight">
+              <p className="text-slate-700 font-black text-base sm:text-lg leading-tight">
                 King Mongkut's Institute of Technology Ladkrabang (KMITL)
               </p>
               <p className="text-slate-500 font-bold text-base sm:text-lg uppercase tracking-wider">
@@ -116,7 +116,7 @@ export default function Home({ onNavigate }) {
           <p className="font-black uppercase tracking-[0.1em] sm:tracking-[0.15em] text-base sm:text-lg md:text-xl mb-2 text-emerald-400">
               © 2026 School of IT, KMITL (Prototype Version 1.0)
           </p>
-          <p className="font-black text-slate-300 text-lg sm:text-xl md:text-2xl tracking-widest uppercase flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
+          <p className="font-black text-slate-300 text-sm sm:text-base tracking-widest uppercase flex items-center justify-center gap-2 sm:gap-3 flex-wrap">
               Made by 
               <a href="https://github.com/Whiterose48" target="_blank" rel="noopener noreferrer" className="text-white hover:text-[#FF9900] hover:underline transition-all duration-200 decoration-[3px] underline-offset-4">@Phruk</a> 
               <span className="text-slate-500">&</span> 
