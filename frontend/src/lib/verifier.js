@@ -1,190 +1,223 @@
 /**
  * Deterministic Query Verifier
- * Compares student query results with expected (golden) query results
+ * Compares a student's query result against the expected (golden) result.
+ *
+ * Correctness model (output-based grading):
+ *  - Column COUNT must match.
+ *  - Values are compared as a positional matrix (row tuples in column order),
+ *    so column aliases / header names never cause false fails or false passes.
+ *  - Row order matters only when the golden query has ORDER BY; otherwise rows
+ *    are compared as a multiset (order-independent).
+ *  - Values are normalized robustly (NULL, bigint, decimals, numeric strings,
+ *    booleans, dates) to avoid engine/type quirks.
  */
 
 import { dbManager } from './db-manager.js';
 
+// Control-char separators (never occur in query output) keep cell/row
+// boundaries unambiguous, e.g. ["1","23"] never collides with ["12","3"].
+const CELL_SEP = String.fromCharCode(1);
+const NULL_SENTINEL = String.fromCharCode(0) + 'NULL';
+
+// Canonical numeric string: 12.50 -> "12.5", 100 -> "100", -0 -> "0".
+function canonicalNumber(n) {
+    if (!Number.isFinite(n)) return String(n);
+    if (Object.is(n, -0)) n = 0;
+    // Round to 6 decimals to absorb floating-point noise, then drop trailing zeros.
+    return parseFloat(n.toFixed(6)).toString();
+}
+
+const NUMERIC_RE = /^-?\d+(\.\d+)?$/;
+
+// Normalize a single cell value to a canonical comparable string.
+function normalizeValue(v) {
+    if (v === null || v === undefined) return NULL_SENTINEL;
+
+    const t = typeof v;
+    if (t === 'bigint') return v.toString();
+    if (t === 'number') return canonicalNumber(v);
+    if (t === 'boolean') return v ? 'true' : 'false';
+    if (v instanceof Date) return Number.isNaN(v.getTime()) ? NULL_SENTINEL : v.toISOString();
+
+    // Strings and Arrow/decimal objects (fall back to their string form).
+    const s = (t === 'string' ? v : String(v)).trim();
+    if (s !== '' && NUMERIC_RE.test(s)) return canonicalNumber(Number(s));
+    return s;
+}
+
+// Build a canonical key string for one row, reading values positionally.
+function rowKey(row, columns) {
+    const parts = new Array(columns.length);
+    for (let i = 0; i < columns.length; i++) {
+        parts[i] = normalizeValue(row ? row[columns[i]] : null);
+    }
+    return parts.join(CELL_SEP);
+}
+
+function arraysEqual(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
+// Strip SQL comments (-- line, /* block */) while preserving string/identifier
+// literals ('...', "...", `...`). Keeps comments from breaking the semicolon
+// check or corrupting execution when whitespace is later normalized.
+export function stripSqlComments(sql) {
+    if (!sql) return '';
+    let out = '';
+    let quote = null; // active string delimiter, or null when outside a literal
+    const n = sql.length;
+
+    for (let i = 0; i < n; i++) {
+        const c = sql[i];
+        const next = sql[i + 1];
+
+        if (quote) {
+            // Pass through backslash escapes (e.g. \') without ending the string.
+            if (c === '\\' && i + 1 < n) { out += c + next; i++; continue; }
+            out += c;
+            if (c === quote) {
+                if (next === quote) { out += next; i++; continue; } // '' escape
+                quote = null;
+            }
+            continue;
+        }
+
+        if (c === "'" || c === '"' || c === '`') { quote = c; out += c; continue; }
+
+        // Line comment: drop through end of line, keep the newline itself.
+        if (c === '-' && next === '-') {
+            while (i + 1 < n && sql[i + 1] !== '\n') i++;
+            continue;
+        }
+
+        // Block comment: drop through closing */, leave a space so tokens stay apart.
+        if (c === '/' && next === '*') {
+            i += 2;
+            while (i < n && !(sql[i] === '*' && sql[i + 1] === '/')) i++;
+            i++; // land on '/', loop's i++ skips it
+            out += ' ';
+            continue;
+        }
+
+        out += c;
+    }
+    return out;
+}
+
 export class Verifier {
     async verify(studentQuery, goldenQuery) {
         try {
-            // Normalize queries - remove semicolons and extra whitespace
-            const normalizeQuery = (query) => {
-                return query
-                    .trim()
-                    .replace(/;+\s*$/, '') // Remove trailing semicolons
-                    .replace(/\s+/g, ' '); // Normalize whitespace
-            };
+            // Strip comments first, then strip trailing semicolons and collapse
+            // whitespace for execution.
+            const normalizeQuery = (query) => stripSqlComments(query)
+                .trim()
+                .replace(/;+\s*$/, '')
+                .replace(/\s+/g, ' ')
+                .trim();
 
             const normalizedStudent = normalizeQuery(studentQuery);
             const normalizedGolden = normalizeQuery(goldenQuery);
 
-            console.log('🔍 Verifying query...');
-            console.log('📝 Student:', normalizedStudent);
-            console.log('⭐ Golden:', normalizedGolden);
+            // Order matters only when the expected answer is explicitly ordered.
+            const orderSensitive = /\bORDER\s+BY\b/i.test(goldenQuery);
 
-            // Execute both queries
             const goldenResult = await dbManager.executeQuery(normalizedGolden);
             const studentResult = await dbManager.executeQuery(normalizedStudent);
 
-            console.log('📊 Golden result:', goldenResult.rows.length, 'rows');
-            console.log('📊 Student result:', studentResult.rows.length, 'rows');
+            const comparison = this.compareResults(studentResult, goldenResult, orderSensitive);
 
-            // Compare results
-            const comparison = this.compareResults(studentResult, goldenResult);
-            
-            console.log('✓ Comparison result:', comparison.isMatch);
-            console.log('   Details:', {
-                columnCountMatch: comparison.columnCountMatch,
-                columnNamesMatch: comparison.columnNamesMatch,
-                rowCountMatch: comparison.rowCountMatch,
-                dataMatch: comparison.dataMatch
-            });
-            
-            const result = {
+            return {
                 success: comparison.isMatch,
                 studentResult,
                 goldenResult,
-                comparison
+                comparison,
             };
-            console.log('🎯 Verifier returning:', {
-                success: result.success,
-                studentResult: {
-                    columns: result.studentResult?.columns?.length,
-                    rows: result.studentResult?.rows?.length
-                }
-            });
-            return result;
         } catch (error) {
-            console.error('❌ Verification error:', error);
+            console.error('Verification error:', error);
             return {
                 success: false,
                 error: error.message,
                 studentResult: null,
                 goldenResult: null,
-                comparison: null
+                comparison: null,
             };
         }
     }
 
-    compareResults(studentResult, goldenResult) {
+    compareResults(studentResult, goldenResult, orderSensitive = false) {
+        const sCols = studentResult?.columns || [];
+        const gCols = goldenResult?.columns || [];
+        const sRows = studentResult?.rows || [];
+        const gRows = goldenResult?.rows || [];
+
         const comparison = {
             isMatch: false,
-            columnCountMatch: false,
+            columnCountMatch: sCols.length === gCols.length,
             columnNamesMatch: false,
-            rowCountMatch: false,
+            rowCountMatch: sRows.length === gRows.length,
             dataMatch: false,
-            details: {}
+            details: {
+                studentColumnCount: sCols.length,
+                goldenColumnCount: gCols.length,
+                studentColumns: sCols,
+                goldenColumns: gCols,
+                studentRowCount: sRows.length,
+                goldenRowCount: gRows.length,
+                orderSensitive,
+                orderIssue: false,
+            },
         };
 
-        // Check column count
-        comparison.columnCountMatch = 
-            studentResult.columns.length === goldenResult.columns.length;
-        comparison.details.studentColumnCount = studentResult.columns.length;
-        comparison.details.goldenColumnCount = goldenResult.columns.length;
+        // Column names: case-insensitive, order-independent (for hints only —
+        // NOT part of the pass/fail gate, since aliases are cosmetic).
+        const normCols = (cols) => [...cols].map((c) => String(c).toLowerCase()).sort();
+        comparison.columnNamesMatch = arraysEqual(normCols(sCols), normCols(gCols));
 
-        // Check column names (case-insensitive, order-independent)
-        const studentCols = [...studentResult.columns].map(c => c.toLowerCase()).sort();
-        const goldenCols = [...goldenResult.columns].map(c => c.toLowerCase()).sort();
-        comparison.columnNamesMatch = 
-            JSON.stringify(studentCols) === JSON.stringify(goldenCols);
-        comparison.details.studentColumns = studentResult.columns;
-        comparison.details.goldenColumns = goldenResult.columns;
-
-        // Check row count
-        comparison.rowCountMatch = 
-            studentResult.rows.length === goldenResult.rows.length;
-        comparison.details.studentRowCount = studentResult.rows.length;
-        comparison.details.goldenRowCount = goldenResult.rows.length;
-
-        // If basic structure matches, compare data
+        // Compare data only when the shape lines up.
         if (comparison.columnCountMatch && comparison.rowCountMatch) {
-            // When column names match OR only differ by case, compare data
-            comparison.dataMatch = this.compareData(studentResult, goldenResult);
-            // If column names don't match exactly but data matches, still mark columns as matching
-            if (comparison.dataMatch && !comparison.columnNamesMatch) {
-                comparison.columnNamesMatch = true;
+            const sKeys = sRows.map((r) => rowKey(r, sCols));
+            const gKeys = gRows.map((r) => rowKey(r, gCols));
+
+            const multisetMatch = arraysEqual([...sKeys].sort(), [...gKeys].sort());
+
+            if (orderSensitive) {
+                const orderedMatch = arraysEqual(sKeys, gKeys);
+                comparison.dataMatch = orderedMatch;
+                // Right rows, wrong order -> actionable hint signal.
+                comparison.details.orderIssue = !orderedMatch && multisetMatch;
+            } else {
+                comparison.dataMatch = multisetMatch;
             }
         }
 
-        // Overall match
-        comparison.isMatch = 
-            comparison.columnCountMatch && 
-            comparison.columnNamesMatch && 
-            comparison.rowCountMatch && 
+        // Pass = same column count, same row count, same values.
+        comparison.isMatch =
+            comparison.columnCountMatch &&
+            comparison.rowCountMatch &&
             comparison.dataMatch;
 
         return comparison;
     }
 
+    // Kept for backward compatibility (positional multiset comparison).
     compareData(studentResult, goldenResult) {
-        if (studentResult.rows.length === 0 && goldenResult.rows.length === 0) {
-            return true;
-        }
-
-        if (studentResult.rows.length !== goldenResult.rows.length) {
-            return false;
-        }
-
-        try {
-            // Normalize and compare rows
-            // Handle NULL values, numeric conversions, and case-insensitive keys
-            const normalizeRow = (row) => {
-                const normalized = {};
-                for (const key in row) {
-                    let val = row[key];
-                    const lowerKey = key.toLowerCase();
-                    // Convert null/undefined to string
-                    if (val === null || val === undefined) {
-                        normalized[lowerKey] = 'NULL';
-                    } else if (typeof val === 'number') {
-                        // Round to 4 decimal places to avoid floating point issues
-                        normalized[lowerKey] = parseFloat(val.toFixed(4)).toString();
-                    } else if (typeof val === 'bigint') {
-                        normalized[lowerKey] = val.toString();
-                    } else {
-                        normalized[lowerKey] = String(val).trim();
-                    }
-                }
-                return normalized;
-            };
-
-            // Normalize all rows
-            const normalizedStudent = studentResult.rows.map(normalizeRow);
-            const normalizedGolden = goldenResult.rows.map(normalizeRow);
-
-            // Sort for order-independent comparison
-            const sortRows = (rows) => {
-                return [...rows].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-            };
-
-            const sortedStudent = sortRows(normalizedStudent);
-            const sortedGolden = sortRows(normalizedGolden);
-
-            // Compare
-            return JSON.stringify(sortedStudent) === JSON.stringify(sortedGolden);
-        } catch (error) {
-            console.error('Data comparison error:', error);
-            return false;
-        }
-    }
-
-    sortRows(rows, columns) {
-        // Sort rows by all columns to make comparison order-independent
-        return [...rows].sort((a, b) => {
-            for (const col of columns) {
-                const aVal = String(a[col] ?? '');
-                const bVal = String(b[col] ?? '');
-                if (aVal < bVal) return -1;
-                if (aVal > bVal) return 1;
-            }
-            return 0;
-        });
+        const sCols = studentResult?.columns || [];
+        const gCols = goldenResult?.columns || [];
+        const sRows = studentResult?.rows || [];
+        const gRows = goldenResult?.rows || [];
+        if (sCols.length !== gCols.length || sRows.length !== gRows.length) return false;
+        const sKeys = sRows.map((r) => rowKey(r, sCols)).sort();
+        const gKeys = gRows.map((r) => rowKey(r, gCols)).sort();
+        return arraysEqual(sKeys, gKeys);
     }
 
     // Extract metadata useful for hint generation
     extractMetadata(studentQuery, comparison) {
-        const metadata = {
+        return {
             hasWhere: /WHERE/i.test(studentQuery),
             hasOrderBy: /ORDER BY/i.test(studentQuery),
             hasGroupBy: /GROUP BY/i.test(studentQuery),
@@ -192,10 +225,8 @@ export class Verifier {
             hasLimit: /LIMIT/i.test(studentQuery),
             hasAggregates: /COUNT|SUM|AVG|MAX|MIN/i.test(studentQuery),
             selectsAllColumns: /SELECT\s+\*/i.test(studentQuery),
-            ...comparison.details
+            ...comparison.details,
         };
-
-        return metadata;
     }
 }
 

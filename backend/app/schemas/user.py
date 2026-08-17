@@ -1,48 +1,48 @@
-import enum
-from datetime import datetime, timezone
-from sqlalchemy import String, Enum, DateTime, Boolean, Text, ARRAY
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.database import Base
+"""
+app/schemas/user.py — Pydantic API schemas for user/auth endpoints.
+
+NOTE: This file previously re-declared the SQLAlchemy `User` ORM model, which
+collided with app/models/user.py ("Table 'users' is already defined") and broke
+app startup. The ORM model lives in app/models/user.py; this file holds only the
+request/response schemas that the API layer imports.
+"""
+from typing import Optional
+
+from pydantic import BaseModel
+
+from app.models.user import Role
 
 
-class Role(str, enum.Enum):
-    STUDENT = "student"
-    TA = "ta"
-    INSTRUCTOR = "instructor"
-    ADMIN = "admin"
+class GoogleTokenPayload(BaseModel):
+    """Body for POST /api/auth/google — Google OAuth access token."""
+    access_token: str
+    role: Optional[str] = None
 
 
-class User(Base):
-    __tablename__ = "users"
+class UserOut(BaseModel):
+    """Public user shape returned by GET /api/auth/me and admin endpoints."""
+    id: int
+    username: str
+    email: str
+    name: str
+    role: str
+    student_id: Optional[str] = None
+    photo_url: Optional[str] = None
+    is_active: bool = True
 
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
-    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    student_id: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, index=True)
-    role: Mapped[Role] = mapped_column(Enum(Role), default=Role.STUDENT, nullable=False)
-    modules: Mapped[str | None] = mapped_column(Text, nullable=True)   # JSON string e.g. '["sql","python"]'
-    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
-    )
-    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    model_config = {"from_attributes": True}
 
-    # Relationships
-    enrollments = relationship("Enrollment", back_populates="user", lazy="selectin")
-    submissions = relationship("Submission", back_populates="user", lazy="selectin")
 
-    def modules_list(self) -> list[str]:
-        """Parse modules JSON string → list."""
-        import json
-        if not self.modules:
-            return []
-        try:
-            return json.loads(self.modules)
-        except Exception:
-            return []
+class UserUpdate(BaseModel):
+    """Admin patch of a user."""
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[Role] = None
+    is_active: Optional[bool] = None
+    modules: Optional[list[str]] = None
 
-    def __repr__(self):
-        return f"<User {self.email} role={self.role}>"
+
+class UserRoleAssign(BaseModel):
+    """Admin: assign a role to a user by email."""
+    email: str
+    role: Role

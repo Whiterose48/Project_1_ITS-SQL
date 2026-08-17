@@ -161,24 +161,35 @@ export class HintEngine {
     }
 
     applyGenericHints(comparison, metadata) {
+        const d = comparison.details || {};
+
+        // Wrong number of columns — most fundamental, stop here.
         if (!comparison.columnCountMatch) {
             this.addHint('error',
-                `Your query returns ${comparison.details.studentColumnCount} column(s), but ${comparison.details.goldenColumnCount} column(s) are expected.`);
+                `Your query returns ${d.studentColumnCount} column(s), but ${d.goldenColumnCount} column(s) are expected.`,
+                "Select exactly the columns the problem asks for.");
+            return;
         }
 
-        if (!comparison.columnNamesMatch && comparison.columnCountMatch) {
-            this.addHint('error',
-                `Column names don't match. Expected: ${comparison.details.goldenColumns.join(', ')}`);
-        }
-
-        if (!comparison.rowCountMatch && comparison.columnCountMatch && comparison.columnNamesMatch) {
+        // Right rows, wrong order (ORDER BY problems).
+        if (d.orderIssue) {
             this.addHint('warning',
-                `Your query returns ${comparison.details.studentRowCount} row(s), but ${comparison.details.goldenRowCount} row(s) are expected.`);
+                "Your rows are correct, but not in the expected order. Add or adjust ORDER BY.",
+                "SELECT ... ORDER BY column ASC|DESC");
+            return;
         }
 
-        if (comparison.columnCountMatch && comparison.columnNamesMatch && comparison.rowCountMatch && !comparison.dataMatch) {
+        // Wrong number of rows.
+        if (!comparison.rowCountMatch) {
             this.addHint('warning',
-                "The number of rows and columns match, but some values are different. Check your filtering conditions or calculations.");
+                `Your query returns ${d.studentRowCount} row(s), but ${d.goldenRowCount} row(s) are expected. Check your filtering (WHERE), joins, or DISTINCT.`);
+            return;
+        }
+
+        // Same shape, but some values differ.
+        if (!comparison.dataMatch) {
+            this.addHint('warning',
+                "Row and column counts match, but some values differ. Check your calculations, conditions, or which columns you selected.");
         }
     }
 

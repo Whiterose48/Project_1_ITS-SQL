@@ -28,6 +28,9 @@ async def lifespan(app: FastAPI):
     import app.models  # noqa: F401
     await init_db()
     print(f"✅  {settings.APP_NAME} started — DB tables created")
+    if settings.LDAP_DEV_MODE:
+        print("⚠️   LDAP_DEV_MODE=ON — login uses LOCAL test users, NOT Active Directory. "
+              "Set LDAP_DEV_MODE=false in production.")
     yield
     # ── Shutdown ──
     print(f"🛑  {settings.APP_NAME} shutting down")

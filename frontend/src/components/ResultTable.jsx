@@ -1,12 +1,18 @@
 import React from 'react';
 
-export default function ResultTable({ data }) {
+function ResultTable({ data }) {
   if (!data || !Array.isArray(data) || data.length === 0) {
     return (
-      <div className="bg-slate-50 border-[4px] border-slate-900 shadow-[8px_8px_0px_0px_#000] p-12 text-center relative overflow-hidden">
-        <div className="text-5xl mb-6 filter drop-shadow-[4px_4px_0px_rgba(0,0,0,0.1)]">📂</div>
-        <p className="text-slate-900 text-xl font-black uppercase tracking-tighter mb-2">No Data Found</p>
-        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Execute a valid query to see results here</p>
+      <div className="bg-white border border-slate-200 shadow-[0_8px_30px_rgba(0,0,0,0.02)] rounded-3xl p-12 text-center flex flex-col items-center justify-center animate-in fade-in duration-300">
+        <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 mb-4 border border-slate-100/80 shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+          </svg>
+        </div>
+        <h3 className="text-slate-800 font-bold text-lg mb-1">No Data Found</h3>
+        <p className="text-slate-400 text-sm max-w-xs mx-auto">
+          Execute a valid SQL query to see the structured output rows here.
+        </p>
       </div>
     );
   }
@@ -14,54 +20,69 @@ export default function ResultTable({ data }) {
   const columns = Object.keys(data[0]);
 
   return (
-    <div className="bg-white border-[4px] border-slate-900 shadow-[10px_10px_0px_0px_#000] overflow-hidden flex flex-col max-h-[600px] animate-in fade-in zoom-in-95 duration-300">
-      <div className="bg-[#a855f7] border-b-[4px] border-slate-900 p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-white border-[2px] border-slate-900 flex items-center justify-center shadow-[2px_2px_0px_0px_#000]">
-            <span className="text-slate-900 font-black text-sm">#</span>
+    <div className="bg-white border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.04)] rounded-3xl overflow-hidden flex flex-col max-h-[500px] w-full animate-in fade-in zoom-in-98 duration-300">
+      
+      {/* Table Header Action Bar */}
+      <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg border border-indigo-100/50">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+            </svg>
           </div>
-          <h3 className="text-white font-black uppercase tracking-widest text-sm drop-shadow-[2px_2px_0px_#000]">
+          <h3 className="text-slate-800 font-bold text-sm">
             Query Output
           </h3>
         </div>
-        <span className="bg-white text-[#a855f7] px-3 py-1 border-[2px] border-slate-900 font-black text-[10px] uppercase tracking-widest shadow-[2px_2px_0px_0px_#000]">
-          {data.length} Rows Returned
+        <span className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase border border-emerald-100">
+          {data.length} {data.length === 1 ? 'Row' : 'Rows'} Returned
         </span>
       </div>
 
-      <div className="overflow-auto custom-scrollbar flex-1">
-        <table className="w-full text-left border-collapse">
-          <thead className="sticky top-0 z-20">
-            <tr className="bg-slate-50">
+      {/* Table Grid Wrapper */}
+      <div className="overflow-auto custom-scrollbar flex-1 bg-white">
+        <table className="w-full text-left border-collapse table-auto">
+          <thead className="sticky top-0 z-20 bg-slate-50/80 backdrop-blur-md border-b border-slate-200">
+            <tr>
               {columns.map((col) => (
-                <th key={col} className="px-6 py-5 text-[13px] font-black text-slate-900 uppercase tracking-widest border-b-[4px] border-slate-900 border-r-[3px] last:border-r-0 bg-slate-50 relative">
-                  <span className="relative z-10">{col}</span>
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-200"></div>
+                <th 
+                  key={col} 
+                  className="px-6 py-3 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-r border-slate-200/50 last:border-r-0"
+                >
+                  {col}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y-[3px] divide-slate-900 bg-white">
+          <tbody className="divide-y divide-slate-100 bg-white">
             {data.map((row, i) => (
-              <tr key={i} className="hover:bg-purple-50 group transition-colors">
-                {columns.map((col) => (
-                  <td key={col} className={`px-6 py-4 text-[14px] font-bold font-mono tabular-nums border-r-[3px] border-slate-900 last:border-r-0 transition-all ${row[col] === null || row[col] === undefined ? 'bg-slate-50/50' : 'text-slate-800'}`}>
-                    {row[col] === null || row[col] === undefined ? (
-                      <div className="flex items-center gap-2 opacity-50">
-                        <span className="w-2 h-2 bg-slate-400 rounded-sm"></span>
-                        <span className="text-[11px] font-black uppercase tracking-tighter">NULL</span>
-                      </div>
-                    ) : (
-                      <span className="group-hover:text-purple-700">{row[col]?.toString()}</span>
-                    )}
-                  </td>
-                ))}
+              <tr key={i} className="hover:bg-slate-50/50 transition-colors duration-150">
+                {columns.map((col) => {
+                  const isNull = row[col] === null || row[col] === undefined;
+                  return (
+                    <td 
+                      key={col} 
+                      className={`px-6 py-3.5 text-[13px] font-mono tabular-nums border-r border-slate-100 last:border-r-0 max-w-xs truncate
+                        ${isNull ? 'bg-slate-50/30' : 'text-slate-700'}`}
+                    >
+                      {isNull ? (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-400/80 tracking-wide font-sans">
+                          NULL
+                        </span>
+                      ) : (
+                        row[col]?.toString()
+                      )}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="bg-slate-900 h-2"></div>
+
     </div>
   );
 }
+
+export default React.memo(ResultTable);

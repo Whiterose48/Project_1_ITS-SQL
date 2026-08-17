@@ -116,16 +116,19 @@ body {
   scrollbar-width: none;
 }
 
-/* Responsive base font sizing */
+/* Responsive base font sizing — compact & consistent across devices.
+   Tailwind sizing is rem-based, so the root size scales the whole UI.
+   Kept intentionally small (was 16→19px, which made everything oversized);
+   large desktops get a gentle bump so they don't feel cramped. */
 html {
-  font-size: 16px;
+  font-size: 14px;               /* mobile / small */
 }
-@media (min-width: 640px) {
-  html { font-size: 17px; }
+@media (min-width: 768px) {      /* iPad */
+  html { font-size: 14.5px; }
 }
-@media (min-width: 1024px) {
-  html { font-size: 18px; }
+@media (min-width: 1280px) {     /* laptop — Mac / PC */
+  html { font-size: 15px; }
 }
-@media (min-width: 1280px) {
-  html { font-size: 19px; }
+@media (min-width: 1680px) {     /* large external displays */
+  html { font-size: 15.5px; }
 }

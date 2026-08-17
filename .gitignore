@@ -1,0 +1,23 @@
+# ── Secrets / environment ──
+.env
+.env.*
+!.env.example
+backend/.env
+!backend/.env.example
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── Logs ──
+logs/
+*.log
+
+# ── Node ──
+node_modules/
+
+# ── OS ──
+.DS_Store

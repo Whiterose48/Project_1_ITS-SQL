@@ -4,36 +4,96 @@
  * - moduleId: '01' (Intro) | '02' (Select) | '03' (Condition) | '05' (Join)
  */
 
+import { getCustomProblems } from './instructor-store';
+
+// คำอธิบายภาพรวมของแต่ละตาราง (แสดงใน Database Schema ของ SQL Playground)
+export const tableMeta = {
+  products:    "ข้อมูลสินค้า (จักรยาน) ทั้งหมดในระบบ",
+  staffs:      "ข้อมูลพนักงานของแต่ละสาขา",
+  brands:      "ยี่ห้อ/แบรนด์ของสินค้า",
+  order_items: "รายการสินค้าย่อยในแต่ละคำสั่งซื้อ",
+  customers:   "ข้อมูลลูกค้า",
+  stores:      "ข้อมูลร้านค้า/สาขา",
+  orders:      "ข้อมูลคำสั่งซื้อของลูกค้า",
+  stocks:      "จำนวนสินค้าคงคลังของแต่ละสาขา",
+  categories:  "ประเภท/หมวดหมู่ของสินค้า",
+  users:       "ตารางผู้ใช้ (สำหรับแบบทดสอบ)"
+};
+
+// โครงสร้างตาราง: name = ชื่อคอลัมน์, type = ชนิดข้อมูล, desc = ความหมายภาษาไทย
 export const dbSchema = {
   products: [
-    { name: "product_id", type: "INT" }, { name: "product_name", type: "VARCHAR" }, { name: "brand_id", type: "INT" }, { name: "category_id", type: "INT" }, { name: "model_year", type: "INT" }, { name: "list_price", type: "DECIMAL" }
+    { name: "product_id",   type: "INT",     desc: "รหัสสินค้า (Primary Key)" },
+    { name: "product_name", type: "VARCHAR", desc: "ชื่อสินค้า" },
+    { name: "brand_id",     type: "INT",     desc: "รหัสยี่ห้อ (เชื่อมตาราง brands)" },
+    { name: "category_id",  type: "INT",     desc: "รหัสประเภท (เชื่อมตาราง categories)" },
+    { name: "model_year",   type: "INT",     desc: "ปีรุ่นของสินค้า" },
+    { name: "list_price",   type: "DECIMAL", desc: "ราคาขายปลีก" }
   ],
   staffs: [
-    { name: "staff_id", type: "INT" }, { name: "first_name", type: "VARCHAR" }, { name: "last_name", type: "VARCHAR" }, { name: "email", type: "VARCHAR" }, { name: "phone", type: "VARCHAR" }, { name: "store_id", type: "INT" }, { name: "manager_id", type: "INT" }
+    { name: "staff_id",   type: "INT",     desc: "รหัสพนักงาน (Primary Key)" },
+    { name: "first_name", type: "VARCHAR", desc: "ชื่อจริง" },
+    { name: "last_name",  type: "VARCHAR", desc: "นามสกุล" },
+    { name: "email",      type: "VARCHAR", desc: "อีเมล" },
+    { name: "phone",      type: "VARCHAR", desc: "เบอร์โทรศัพท์" },
+    { name: "store_id",   type: "INT",     desc: "รหัสร้านที่สังกัด (เชื่อม stores)" },
+    { name: "manager_id", type: "INT",     desc: "รหัสผู้จัดการ (เชื่อม staffs)" }
   ],
   brands: [
-    { name: "brand_id", type: "INT" }, { name: "brand_name", type: "VARCHAR" }
+    { name: "brand_id",   type: "INT",     desc: "รหัสยี่ห้อ (Primary Key)" },
+    { name: "brand_name", type: "VARCHAR", desc: "ชื่อยี่ห้อ" }
   ],
   order_items: [
-    { name: "order_id", type: "INT" }, { name: "item_id", type: "INT" }, { name: "product_id", type: "INT" }, { name: "quantity", type: "INT" }, { name: "list_price", type: "DECIMAL" }, { name: "discount", type: "DECIMAL" }
+    { name: "order_id",   type: "INT",     desc: "รหัสคำสั่งซื้อ (เชื่อม orders)" },
+    { name: "item_id",    type: "INT",     desc: "ลำดับรายการในคำสั่งซื้อ" },
+    { name: "product_id", type: "INT",     desc: "รหัสสินค้า (เชื่อม products)" },
+    { name: "quantity",   type: "INT",     desc: "จำนวนที่สั่งซื้อ" },
+    { name: "list_price", type: "DECIMAL", desc: "ราคาต่อหน่วย" },
+    { name: "discount",   type: "DECIMAL", desc: "ส่วนลด (สัดส่วน 0-1)" }
   ],
   customers: [
-    { name: "customer_id", type: "INT" }, { name: "first_name", type: "VARCHAR" }, { name: "last_name", type: "VARCHAR" }, { name: "phone", type: "VARCHAR" }, { name: "email", type: "VARCHAR" }, { name: "street", type: "VARCHAR" }, { name: "city", type: "VARCHAR" }, { name: "state", type: "VARCHAR" }, { name: "zip_code", type: "VARCHAR" }
+    { name: "customer_id", type: "INT",     desc: "รหัสลูกค้า (Primary Key)" },
+    { name: "first_name",  type: "VARCHAR", desc: "ชื่อจริง" },
+    { name: "last_name",   type: "VARCHAR", desc: "นามสกุล" },
+    { name: "phone",       type: "VARCHAR", desc: "เบอร์โทรศัพท์" },
+    { name: "email",       type: "VARCHAR", desc: "อีเมล" },
+    { name: "street",      type: "VARCHAR", desc: "ที่อยู่ (ถนน)" },
+    { name: "city",        type: "VARCHAR", desc: "เมือง" },
+    { name: "state",       type: "VARCHAR", desc: "รัฐ" },
+    { name: "zip_code",    type: "VARCHAR", desc: "รหัสไปรษณีย์" }
   ],
   stores: [
-    { name: "store_id", type: "INT" }, { name: "store_name", type: "VARCHAR" }, { name: "phone", type: "VARCHAR" }, { name: "email", type: "VARCHAR" }, { name: "street", type: "VARCHAR" }, { name: "city", type: "VARCHAR" }, { name: "state", type: "VARCHAR" }, { name: "zip_code", type: "VARCHAR" }
+    { name: "store_id",   type: "INT",     desc: "รหัสร้านค้า (Primary Key)" },
+    { name: "store_name", type: "VARCHAR", desc: "ชื่อร้านค้า/สาขา" },
+    { name: "phone",      type: "VARCHAR", desc: "เบอร์โทรศัพท์" },
+    { name: "email",      type: "VARCHAR", desc: "อีเมล" },
+    { name: "street",     type: "VARCHAR", desc: "ที่อยู่ (ถนน)" },
+    { name: "city",       type: "VARCHAR", desc: "เมือง" },
+    { name: "state",      type: "VARCHAR", desc: "รัฐ" },
+    { name: "zip_code",   type: "VARCHAR", desc: "รหัสไปรษณีย์" }
   ],
   orders: [
-    { name: "order_id", type: "INT" }, { name: "customer_id", type: "INT" }, { name: "order_status", type: "INT" }, { name: "order_date", type: "DATE" }, { name: "required_date", type: "DATE" }, { name: "shipped_date", type: "DATE" }, { name: "store_id", type: "INT" }, { name: "staff_id", type: "INT" }
+    { name: "order_id",      type: "INT",  desc: "รหัสคำสั่งซื้อ (Primary Key)" },
+    { name: "customer_id",   type: "INT",  desc: "รหัสลูกค้า (เชื่อม customers)" },
+    { name: "order_status",  type: "INT",  desc: "สถานะคำสั่งซื้อ" },
+    { name: "order_date",    type: "DATE", desc: "วันที่สั่งซื้อ" },
+    { name: "required_date", type: "DATE", desc: "วันที่ลูกค้าต้องการรับ" },
+    { name: "shipped_date",  type: "DATE", desc: "วันที่จัดส่ง (ว่างได้ถ้ายังไม่ส่ง)" },
+    { name: "store_id",      type: "INT",  desc: "รหัสร้านค้า (เชื่อม stores)" },
+    { name: "staff_id",      type: "INT",  desc: "รหัสพนักงานผู้ดูแล (เชื่อม staffs)" }
   ],
   stocks: [
-    { name: "store_id", type: "INT" }, { name: "product_id", type: "INT" }, { name: "quantity", type: "INT" }
+    { name: "store_id",   type: "INT", desc: "รหัสร้านค้า (เชื่อม stores)" },
+    { name: "product_id", type: "INT", desc: "รหัสสินค้า (เชื่อม products)" },
+    { name: "quantity",   type: "INT", desc: "จำนวนคงเหลือในคลัง" }
   ],
   categories: [
-    { name: "category_id", type: "INT" }, { name: "category_name", type: "VARCHAR" }
+    { name: "category_id",   type: "INT",     desc: "รหัสประเภท (Primary Key)" },
+    { name: "category_name", type: "VARCHAR", desc: "ชื่อประเภทสินค้า" }
   ],
   users: [
-    { name: "id", type: "INT" }, { name: "name", type: "VARCHAR" }
+    { name: "id",   type: "INT",     desc: "รหัสผู้ใช้ (Primary Key)" },
+    { name: "name", type: "VARCHAR", desc: "ชื่อผู้ใช้" }
   ]
 };
 
@@ -258,8 +318,13 @@ const rawProblems = [
     description: "แสดงชื่อลูกค้าที่ซื้อสินค้าจากแบรนด์ 'Trek'", table: "orders", tables: ["customers", "orders", "order_items", "products", "brands"], goldenQuery: "SELECT DISTINCT c.first_name, c.last_name FROM customers c JOIN orders o ON c.customer_id = o.customer_id JOIN order_items oi ON o.order_id = oi.order_id JOIN products p ON oi.product_id = p.product_id JOIN brands b ON p.brand_id = b.brand_id WHERE b.brand_name = 'Trek';", starterCode: "SELECT " }
 ];
 
-export const problems = rawProblems.map(p => {
-  const reqs = p.requirements || [
+/**
+ * Normalize a raw problem definition into the runtime shape the workspace uses
+ * (default requirements, derived constraints, resolved schema columns/tables).
+ * Shared by the built-in `problems` and instructor-created custom problems.
+ */
+export function normalizeProblem(p) {
+  const reqs = p.requirements && p.requirements.length ? p.requirements : [
     "เขียนคำสั่ง SQL ให้ถูกต้องตามหลักไวยากรณ์",
     "แสดงผลข้อมูลให้ตรงกับเงื่อนไขโจทย์ 100%",
     `อ้างอิงข้อมูลจากตารางหลัก: ${p.table}`
@@ -271,7 +336,7 @@ export const problems = rawProblems.map(p => {
   // Auto-detect order sensitivity
   const orderSensitive = p.orderSensitive !== undefined
     ? p.orderSensitive
-    : /ORDER\s+BY/i.test(p.goldenQuery);
+    : /ORDER\s+BY/i.test(p.goldenQuery || '');
 
   return {
     ...p,
@@ -279,13 +344,30 @@ export const problems = rawProblems.map(p => {
     constraints,
     orderSensitive,
     columns: p.table && dbSchema[p.table] ? dbSchema[p.table] : [],
-    allTables: p.tables
-      ? p.tables.map(t => ({ name: t, columns: dbSchema[t] || [] }))
+    allTables: p.tables && p.tables.length
+      ? p.tables.map(t => ({ name: t, desc: tableMeta[t] || '', columns: dbSchema[t] || [] }))
       : p.table && dbSchema[p.table]
-        ? [{ name: p.table, columns: dbSchema[p.table] }]
+        ? [{ name: p.table, desc: tableMeta[p.table] || '', columns: dbSchema[p.table] }]
         : []
   };
-});
+}
+
+export const problems = rawProblems.map(normalizeProblem);
+
+/**
+ * Built-in problems merged with instructor-created ones (localStorage).
+ * Use this everywhere the workspace/course needs the live problem set so
+ * newly authored problems and exams show up immediately.
+ */
+export function getAllProblems() {
+  let custom = [];
+  try {
+    custom = getCustomProblems().map(normalizeProblem);
+  } catch {
+    custom = [];
+  }
+  return [...problems, ...custom];
+}
 
 /**
  * Auto-derive constraints from golden query.

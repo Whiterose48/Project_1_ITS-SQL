@@ -16,12 +16,46 @@ class Settings(BaseSettings):
     # ── Database ──
     DATABASE_URL: str = "sqlite+aiosqlite:///./its_sql.db"
 
-    # ── LDAP Authentication ──
-    LDAP_URL: str = "ldap://localhost"
-    LDAP_PORT: int = 389
-    LDAP_USE_SSL: bool = False
-    LDAP_BASE_DN: str = "DC=ac,DC=th"
-    LDAP_USER_OU: str = "ou=users"
+    # ── LDAP / Active Directory Authentication (LDAPS) ──
+    LDAP_ENABLED: bool = True
+    LDAP_HOST: str = "NITROGEN.it.kmitl.ac.th"
+    LDAP_PORT: int = 636                # 636 = LDAPS (TLS), 389 = plaintext/StartTLS
+    LDAP_USE_SSL: bool = True           # True → LDAPS on connect
+    # Certificate validation: CERT_REQUIRED (secure) | CERT_OPTIONAL | CERT_NONE (dev only).
+    # If the AD server uses an internal/self-signed cert not in the OS trust store,
+    # CERT_REQUIRED will fail — install the CA and keep CERT_REQUIRED for production.
+    LDAP_TLS_VALIDATE: str = "CERT_REQUIRED"
+    LDAP_CA_CERTS_FILE: str = ""        # optional path to CA bundle for the AD cert
+
+    # Service (bind) account — used only to look up the user's DN (step 1).
+    # AD simple bind accepts UPN (user@domain) or DOWN-LEVEL (DOMAIN\\user) or full DN.
+    LDAP_BIND_USER: str = "ldap_bind@it.kmitl.ac.th"
+    LDAP_BIND_PASSWORD: str = ""        # set in .env — never commit
+
+    LDAP_BASE_DN: str = "DC=it,DC=kmitl,DC=ac,DC=th"
+    # {login} is replaced with the ESCAPED user input (CWE-90 safe).
+    LDAP_USER_FILTER: str = (
+        "(&(objectClass=user)"
+        "(|(sAMAccountName={login})(userPrincipalName={login})(mail={login})))"
+    )
+    LDAP_TIMEOUT: int = 8              # seconds for connect + receive
+
+    # Role assignment for JIT-provisioned LDAP users.
+    LDAP_DEFAULT_ROLE: str = "student"
+    # Map an AD group DN substring → platform role, e.g.
+    # {"CN=Instructors,OU=Groups": "instructor"}. Checked against memberOf.
+    LDAP_GROUP_ROLE_MAP: dict = {}
+
+    # Brute-force / lockout protection (per IP and per username).
+    LDAP_RATE_LIMIT: int = 5          # max attempts...
+    LDAP_RATE_WINDOW: int = 60        # ...per this many seconds
+
+    # ── Dev mode ──
+    # When True, /api/auth/ldap-login validates a fixed set of test users
+    # LOCALLY (no network / no AD) so login works off-campus without VPN.
+    # MUST be False in production — enable only via the gitignored .env.
+    LDAP_DEV_MODE: bool = False
+    LDAP_DEV_USERS: dict = {}         # {username: {password,name,email,role,department}}
 
     # LDAP Branch configurations (Thai university common branches)
     # Format: branch_code -> display_name

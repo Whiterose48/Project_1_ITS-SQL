@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-export default function LeftPanel({ problemData, currentStep }) {
+// แยก Timer ออกมาเป็น component ของตัวเอง เพื่อไม่ให้ตาราง Schema
+// ถูก re-render ใหม่ทุก ๆ วินาที (ช่วยเรื่อง performance)
+function TimerBar() {
   const [timeLeft, setTimeLeft] = useState('');
 
-  // ✨ อัปเดต Timer ให้อิงจากเวลาเริ่มสอบจริง (1 ชั่วโมง)
+  // อัปเดต Timer ให้อิงจากเวลาเริ่มสอบจริง (1 ชั่วโมง)
   useEffect(() => {
     let timer;
     const EXAM_DURATION = 60 * 60 * 1000; // 1 ชั่วโมง
@@ -15,9 +17,8 @@ export default function LeftPanel({ problemData, currentStep }) {
       const userId = userData ? JSON.parse(userData).id : 'guest';
 
       let targetTime;
-      
+
       if (mode === 'EXAM') {
-         // ดึงเวลาเริ่มสอบ ถ้ามีให้นับ 1 ชม. ถ้าไม่มีก็ให้เริ่มใหม่
          const startTime = localStorage.getItem(`exam_start_${userId}_${modId}`);
          if (startTime) {
              targetTime = parseInt(startTime) + EXAM_DURATION;
@@ -25,7 +26,6 @@ export default function LeftPanel({ problemData, currentStep }) {
              targetTime = Date.now() + EXAM_DURATION;
          }
       } else {
-         // ถ้าโหมดอื่น โชว์เวลา Mock ไว้เท่ๆ
          targetTime = new Date('2026-03-13T10:00:00+07:00').getTime();
       }
 
@@ -41,10 +41,7 @@ export default function LeftPanel({ problemData, currentStep }) {
       const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((difference % (1000 * 60)) / 1000);
 
-      // เติม 0 ด้านหน้าให้เลขสวยงาม
       const format = (val) => val.toString().padStart(2, '0');
-      
-      // ถ้าน้อยกว่า 1 วัน ไม่ต้องโชว์ Day
       setTimeLeft(`${format(h)}h ${format(m)}m ${format(s)}s`);
     };
 
@@ -53,108 +50,141 @@ export default function LeftPanel({ problemData, currentStep }) {
     return () => clearInterval(timer);
   }, []);
 
+  const isTimeUp = timeLeft === '00h 00m 00s';
+
+  return (
+    <div className={`px-6 py-4 border-b border-slate-100 flex items-center justify-between transition-colors duration-500 ${isTimeUp ? 'bg-rose-50' : 'bg-slate-50/50'}`}>
+      <div className="flex items-center gap-2.5">
+        <div className={`flex items-center justify-center w-8 h-8 rounded-full ${isTimeUp ? 'bg-rose-100 text-rose-500' : 'bg-[#03045e]/10 text-[#03045e]'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+        </div>
+        <span className={`text-xs font-semibold tracking-wider uppercase ${isTimeUp ? 'text-rose-600' : 'text-slate-500'}`}>
+          Time Remaining
+        </span>
+      </div>
+
+      <div className={`font-mono text-lg font-bold tabular-nums tracking-tight px-3 py-1 rounded-lg border
+        ${isTimeUp ? 'text-rose-600 bg-white border-rose-200 shadow-sm animate-pulse' : 'text-slate-800 bg-white border-slate-200 shadow-sm'}`}
+      >
+        {timeLeft || '00:00:00'}
+      </div>
+    </div>
+  );
+}
+
+function LeftPanel({ problemData, currentStep }) {
   if (!problemData) return null;
 
   return (
-    <div className="bg-white rounded-[32px] border-[4px] border-slate-900 shadow-[10px_10px_0px_0px_#000] flex flex-col h-full overflow-hidden animate-in slide-in-from-left duration-500">
-      
-      <div className="bg-gradient-to-r from-[#DBDCFF] to-[#FFE5C4] p-6 text-center border-b-[4px] border-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#000_1.5px,transparent_1.5px)] [background-size:10px_10px]"></div>
-        <p className="relative z-10 text-slate-900 text-[15px] uppercase tracking-[0.3em] font-black mb-1">
-          Time Remaining
-        </p>
-        <div className="relative z-10 flex justify-center items-center">
-          {/* ✨ ทำให้เวลาที่ใกล้หมด กระพริบเป็นสีแดงได้ถ้าต้องการ */}
-          <p className={`text-3xl font-black tabular-nums tracking-tighter font-mono drop-shadow-[2px_2px_0px_rgba(255,255,255,0.5)] ${timeLeft === '00h 00m 00s' ? 'text-red-600 animate-pulse' : 'text-slate-900'}`}>
-            {timeLeft || '00:00:00'}
-          </p>
-        </div>
-      </div>
+    <div className="bg-white rounded-3xl border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full overflow-hidden animate-in slide-in-from-left duration-500">
 
-      <div className="p-8 overflow-y-auto custom-scrollbar flex-1 pb-10 bg-white relative">
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]"></div>
+      {/* Top Timer Bar */}
+      <TimerBar />
 
-        <div className="mb-10 relative">
-          <div className="inline-block relative">
-             <div className="absolute inset-0 bg-slate-900 rounded-lg translate-x-1.5 translate-y-1.5"></div>
-             <span className="relative z-10 text-white font-black text-xs uppercase tracking-[0.2em] bg-blue-600 px-4 py-2 rounded-lg border-[3px] border-slate-900 block">
-               PROBLEM : {currentStep}
-             </span>
-          </div>
-          <h2 className="text-3xl font-black text-slate-900 mt-8 leading-[0.9] tracking-tighter uppercase">
+      {/* Main Scrollable Content */}
+      <div className="p-6 sm:p-8 overflow-y-auto custom-scrollbar flex-1 bg-white relative">
+
+        {/* Problem Header */}
+        <div className="mb-8">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 font-semibold text-xs uppercase tracking-wide border border-blue-100 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+            </svg>
+            Problem {currentStep}
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 leading-tight">
             {problemData.title}
           </h2>
         </div>
 
-        <div className="mb-12 relative group">
-          <div className="absolute inset-0 bg-blue-500/10 rounded-2xl -rotate-1 group-hover:rotate-0 transition-transform duration-300"></div>
-          <p className="relative z-10 text-slate-800 text-base font-bold leading-relaxed border-l-[8px] border-blue-600 pl-6 py-4">
-            {problemData.description}
-          </p>
+        {/* Description */}
+        <div className="mb-10 text-slate-600 text-base leading-relaxed">
+          {problemData.description}
         </div>
 
+        {/* Mission Objectives */}
         <div className="mb-12">
-          <div className="bg-slate-900 border-[4px] border-slate-900 rounded-2xl shadow-[6px_6px_0px_0px_#FF9900] overflow-hidden">
-            <div className="bg-slate-800 px-6 py-4 flex items-center justify-between border-b-[4px] border-slate-900">
-              <h3 className="font-black text-white flex items-center text-sm tracking-widest uppercase">
-                <span className="mr-3 text-xl">🎯</span> Mission Objectives
-              </h3>
-              <div className="bg-[#FF4500] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border-2 border-slate-900 shadow-[2px_2px_0px_0px_#000]">
-                Rules
-              </div>
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <div className="p-1.5 bg-amber-50 text-amber-500 rounded-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z" clipRule="evenodd" />
+              </svg>
             </div>
+            <h3 className="font-bold text-slate-800 text-lg">Mission Objectives</h3>
+          </div>
 
-            <div className="p-6 space-y-4 bg-white">
-              {problemData.requirements?.map((req, i) => (
-                <div key={i} className="flex items-start gap-4 p-4 rounded-xl border-[3px] border-slate-100 hover:border-slate-900 hover:bg-slate-50 transition-all cursor-default group">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg border-[3px] border-slate-900 bg-white flex items-center justify-center shadow-[3px_3px_0px_0px_#000] group-hover:bg-blue-600 group-hover:text-white transition-all">
-                    <span className="font-black font-mono text-sm">{i + 1}</span>
-                  </div>
-                  <p className="text-slate-700 font-bold text-[15px] leading-tight pt-1.5">{req}</p>
+          <div className="space-y-3">
+            {problemData.requirements?.map((req, i) => (
+              <div key={i} className="flex items-start gap-3.5 p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors">
+                <div className="flex-shrink-0 w-6 h-6 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xs font-semibold text-slate-500 shadow-sm mt-0.5">
+                  {i + 1}
                 </div>
-              ))}
-            </div>
+                <p className="text-slate-700 text-[15px] leading-relaxed">{req}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="space-y-6"> 
-          <div className="flex items-center justify-between px-1">
-            <h3 className="font-black text-slate-900 flex items-center text-sm tracking-widest uppercase">
-              <span className="mr-3 text-xl">📊</span> Database Schema
-            </h3>
-            <span className="text-white font-mono text-[10px] font-black bg-blue-600 px-3 py-1.5 rounded-lg border-[3px] border-slate-900 shadow-[3px_3px_0px_0px_#000] uppercase">
+        {/* Database Schema */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between mb-4 px-1">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-emerald-50 text-emerald-500 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
+                  <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
+                  <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
+                </svg>
+              </div>
+              <h3 className="font-bold text-slate-800 text-lg">Database Schema</h3>
+            </div>
+            <span className="text-slate-500 font-medium text-xs bg-slate-100 px-2.5 py-1 rounded-md">
               {problemData.allTables && problemData.allTables.length > 1
                 ? `${problemData.allTables.length} Tables`
-                : `Table: ${problemData.table}`}
+                : `1 Table`}
             </span>
           </div>
-          
-          {(problemData.allTables && problemData.allTables.length > 1
+
+          {(problemData.allTables?.length
             ? problemData.allTables
-            : [{ name: problemData.table, columns: problemData.columns }]
+            : [{ name: problemData.table, desc: '', columns: problemData.columns }]
           ).map((tbl, tblIdx) => (
-            <div key={tblIdx} className="border-[4px] border-slate-900 rounded-2xl overflow-hidden shadow-[8px_8px_0px_0px_#000] bg-white">
-              <div className="bg-blue-600 px-6 py-3 flex items-center justify-between border-b-[3px] border-slate-900">
-                <span className="text-white font-black text-xs uppercase tracking-widest font-mono">{tbl.name}</span>
-                <span className="text-blue-200 font-mono text-[10px] font-bold">{tbl.columns?.length || 0} cols</span>
+            <div key={tblIdx} className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+              <div className="bg-slate-50 border-b border-slate-200 px-5 py-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-slate-700 font-bold text-sm font-mono">{tbl.name}</span>
+                  <span className="shrink-0 text-slate-400 text-xs font-medium">{tbl.columns?.length || 0} columns</span>
+                </div>
+                {tbl.desc && (
+                  <p className="text-slate-500 text-[12px] mt-1 leading-snug">{tbl.desc}</p>
+                )}
               </div>
+
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-slate-900">
-                    <th className="px-6 py-4 font-black text-white uppercase text-[11px] tracking-widest border-r-2 border-slate-700">Column</th>
-                    <th className="px-6 py-4 font-black text-white uppercase text-[11px] tracking-widest">Type</th>
+                  <tr className="bg-white border-b border-slate-100">
+                    <th className="px-5 py-3 font-semibold text-slate-400 uppercase text-[11px] tracking-wider">Column</th>
+                    <th className="px-5 py-3 font-semibold text-slate-400 uppercase text-[11px] tracking-wider text-right w-[84px]">Type</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y-2 divide-slate-100">
+                <tbody className="divide-y divide-slate-50">
                   {tbl.columns?.map((col, idx) => (
-                    <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
-                      <td className="px-6 py-4 border-r-2 border-slate-100">
-                        <code className="text-blue-700 font-black font-mono text-sm bg-blue-50 px-2 py-1 rounded-md">
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors align-top">
+                      <td className="px-5 py-3">
+                        <code className="text-blue-600 font-medium font-mono text-[13px] bg-blue-50/50 border border-blue-100 px-2 py-0.5 rounded">
                           {col.name}
                         </code>
+                        {col.desc && (
+                          <p className="text-slate-500 text-[12px] mt-1.5 leading-snug">{col.desc}</p>
+                        )}
                       </td>
-                      <td className="px-6 py-4 text-slate-500 font-bold font-mono text-xs uppercase">
-                        {col.type}
+                      <td className="px-5 py-3 text-right">
+                        <span className="inline-block text-slate-500 font-mono text-[11px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                          {col.type}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -168,3 +198,5 @@ export default function LeftPanel({ problemData, currentStep }) {
     </div>
   );
 }
+
+export default React.memo(LeftPanel);

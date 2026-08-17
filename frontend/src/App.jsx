@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import Home from './components/Home';
-import Courses from './components/Courses';
 import CourseText from './components/CourseText';
 import Dashboard from './components/Dashboard'; 
 import Login from './components/Login'; 
@@ -12,12 +11,10 @@ import MySubmissions from './components/MySubmissions';
 import Tabs from './components/Tabs';
 import FeedbackOverlay from './components/FeedbackOverlay';
 import InstructorDashboard from './components/InstructorDashboard';
-import CourseManagement from './components/CourseManagement';
-import ProblemManagement from './components/ProblemManagement';
 import AdminPanel from './components/AdminPanel';
 import { dbManager } from './lib/db-manager';
-import { problems } from './lib/problems';
-import { Verifier } from './lib/verifier';
+import { getAllProblems } from './lib/problems';
+import { Verifier, stripSqlComments } from './lib/verifier';
 import { HintEngine } from './lib/hint-engine';
  
 import botIcon from './assets/bot.png';
@@ -41,8 +38,8 @@ export default function App() {
 
   const isLoggedIn = !!user;
 
-  // Valid page routes
-  const VALID_PAGES = ['home', 'courses', 'coursetext', 'dashboard', 'workspace', 'instructor', 'coursemanage', 'problems', 'admin'];
+  // เอา 'courses' ออกจาก VALID_PAGES ตามโค้ดต้นฉบับของคุณ
+  const VALID_PAGES = ['home', 'coursetext', 'dashboard', 'workspace', 'instructor', 'coursemanage', 'problems', 'admin'];
 
   const getPageFromPath = () => {
     const path = window.location.pathname.replace(/^\//, '') || 'home';
@@ -56,18 +53,17 @@ export default function App() {
     return getPageFromPath() || sessionStorage.getItem('currentPage') || 'home';
   });
 
-  // ✨ Browser History Integration — ปุ่ม Back/Forward ของ browser ทำงานได้
+  // ✨ Browser History Integration
   const isPopstateRef = useRef(false);
 
   const navigateTo = useCallback((page) => {
-    // Access control for instructor page
     if (page === 'instructor' || page === 'coursemanage' || page === 'problems') {
-      if (!user || user.role !== 'instructor') {
-        console.warn('Access denied: Not an instructor');
+      // TA is bundled with instructor — both get teaching access.
+      const canTeach = !!user && ['instructor', 'ta'].includes(user.role);
+      if (!canTeach) {
+        console.warn('Access denied: staff only (instructor/ta)');
         return;
       }
-      // Backend already validated instructor authorization during registration
-      // So if they have instructor role, they're authorized
     }
     
     setCurrentPage(page);
@@ -79,7 +75,6 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    // Set initial history state
     const initialPage = getPageFromPath() || sessionStorage.getItem('currentPage') || 'home';
     const url = initialPage === 'home' ? '/' : `/${initialPage}`;
     window.history.replaceState({ page: initialPage }, '', url);
@@ -99,7 +94,6 @@ export default function App() {
   const [workspaceMode, setWorkspaceMode] = useState(() => localStorage.getItem('workspaceMode') || 'COURSE');
 
   const handleLogout = useCallback(() => {
-    // ลบ JWT token + clear session (แทน Firebase signOutUser)
     localStorage.removeItem('its_token');
     setUser(null);
     navigateTo('home'); 
@@ -141,14 +135,15 @@ export default function App() {
     setCountdown(30);
 
     if (isLoggedIn) {
+      // Idle window: warn at 19.5 min, auto-logout at 20 min (30s countdown).
       warningRef.current = setTimeout(() => {
         setShowWarning(true);
         countdownIntervalRef.current = setInterval(() => {
           setCountdown(prev => (prev > 0 ? prev - 1 : 0));
         }, 1000);
-      }, 150000); 
+      }, 1170000);
 
-      timeoutRef.current = setTimeout(() => handleLogout(), 180000); 
+      timeoutRef.current = setTimeout(() => handleLogout(), 1200000);
     }
   }, [isLoggedIn, handleLogout]);
 
@@ -175,7 +170,6 @@ export default function App() {
 
   useEffect(() => { sessionStorage.setItem('currentPage', currentPage); }, [currentPage]);
 
-  // ✨ useCallback เพื่อป้องกันการสร้างฟังก์ชันใหม่ซ้ำๆ (จุดแก้บั๊กช้า)
   const getWorkspaceKeys = useCallback(() => {
     const mode = localStorage.getItem('workspaceMode') || 'COURSE';
     const modId = localStorage.getItem('workspaceModule') || '01';
@@ -191,6 +185,7 @@ export default function App() {
   const [selectedTab, setSelectedTab] = useState(() => localStorage.getItem('selectedTab') || 'description');
   const [problemData, setProblemData] = useState(null);
   const [submissions, setSubmissions] = useState([]);
+  const [moduleSubs, setModuleSubs] = useState([]);
   const [overlay, setOverlay] = useState({ visible: false, status: 'loading', message: '' });
   const [filteredProblemsList, setFilteredProblemsList] = useState([]);
   const [problemStatuses, setProblemStatuses] = useState([]);
@@ -208,16 +203,26 @@ export default function App() {
     const allSubs = JSON.parse(localStorage.getItem(submissionKey)) || {};
     const specificSub = allSubs[step || currentProblem];
     setSubmissions(specificSub ? [specificSub] : []);
-  }, [getWorkspaceKeys, currentProblem]);
 
-  // ✨ Effect จัดการ Workspace แบบ High Performance
+    // Module-wide list (latest attempt per answered question) for the student history view.
+    const list = Object.keys(allSubs)
+      .map((k) => {
+        const stepNum = parseInt(k, 10);
+        const prob = filteredProblemsList[stepNum - 1];
+        return { step: stepNum, title: prob?.title || `Question ${stepNum}`, ...allSubs[k] };
+      })
+      .filter((s) => !Number.isNaN(s.step))
+      .sort((a, b) => a.step - b.step);
+    setModuleSubs(list);
+  }, [getWorkspaceKeys, currentProblem, filteredProblemsList]);
+
   useEffect(() => {
     if (currentPage === 'workspace') {
       const mode = localStorage.getItem('workspaceMode') || 'COURSE';
       const modId = localStorage.getItem('workspaceModule') || '01';
       setWorkspaceMode(mode);
 
-      const currentList = problems.filter(p => p.type === mode && p.moduleId === modId);
+      const currentList = getAllProblems().filter(p => p.type === mode && p.moduleId === modId);
       setFilteredProblemsList(currentList);
       
       const { statusKey, stepKey } = getWorkspaceKeys();
@@ -232,7 +237,7 @@ export default function App() {
         setCurrentProblem(safeStep);
         setProblemData(currentList[stepIndex]);
         refreshCurrentSubmissions(safeStep);
-        setSelectedTab('description'); // Always show description tab when entering workspace
+        setSelectedTab('description'); 
       } else {
         setProblemData({
           title: `NO CONTENT FOUND`,
@@ -241,9 +246,8 @@ export default function App() {
         });
       }
     }
-  }, [currentPage, getWorkspaceKeys]); // dependency แค่นี้พอ เพื่อหยุด Loop
+  }, [currentPage, getWorkspaceKeys]);
 
-  // ✨ เมื่อมีการเปลี่ยนข้อ แยกออกมาเพื่อให้ทำงานรวดเร็ว
   useEffect(() => {
     if (currentPage === 'workspace' && filteredProblemsList.length > 0) {
       const { stepKey } = getWorkspaceKeys();
@@ -256,7 +260,7 @@ export default function App() {
     }
   }, [currentProblem, filteredProblemsList, currentPage, getWorkspaceKeys, refreshCurrentSubmissions]);
 
-  const updateProblemStatus = (index, status) => {
+  const updateProblemStatus = useCallback((index, status) => {
     setProblemStatuses(prev => {
       const next = [...prev];
       next[index] = status;
@@ -264,15 +268,18 @@ export default function App() {
       localStorage.setItem(statusKey, JSON.stringify(next));
       return next;
     });
-  };
+  }, [getWorkspaceKeys]);
 
   const handleSubmit = async (code, language) => {
     if(!problemData || problemData.title === 'NO CONTENT FOUND') return;
     resetTimer(); 
     setOverlay({ visible: true, status: 'loading', message: 'Validating Query...' });
     try {
+      const cleanCode = stripSqlComments(code);
+      const verifyStart = performance.now();
       const result = await new Verifier().verify(code, problemData.goldenQuery);
-      const hasSemicolon = code.trim().endsWith(';');
+      const durationMs = Math.round(performance.now() - verifyStart);
+      const hasSemicolon = cleanCode.trim().endsWith(';');
       const isPassed = result.success && hasSemicolon;
       
       updateProblemStatus(currentProblem - 1, isPassed ? 'passed' : 'failed');
@@ -280,18 +287,29 @@ export default function App() {
       const { submissionKey } = getWorkspaceKeys();
       const mode = localStorage.getItem('workspaceMode') || 'COURSE';
       const modId = localStorage.getItem('workspaceModule') || '01';
+      // DuckDB returns BIGINT columns as JS BigInt, which JSON.stringify cannot serialize
+      // (it throws) — sanitize to plain numbers so the whole submission persists to localStorage.
+      const jsonSafe = (v) => (v == null ? v : JSON.parse(JSON.stringify(v, (_, val) => (typeof val === 'bigint' ? Number(val) : val))));
+      const safeResult = jsonSafe(result.studentResult);
+
       const existingSubs = JSON.parse(localStorage.getItem(submissionKey)) || {};
-      const newSubmission = { code, passed: isPassed, timestamp: new Date().toLocaleString(), queryResult: result.studentResult };
+      const prev = existingSubs[currentProblem];
+      // Preserve every attempt. Older records stored only the latest object → seed history from it.
+      const priorAttempts = Array.isArray(prev?.attempts)
+        ? prev.attempts
+        : (prev ? [{ code: prev.code, passed: prev.passed, timestamp: prev.timestamp, queryResult: prev.queryResult }] : []);
+      const thisAttempt = { code, passed: isPassed, timestamp: new Date().toLocaleString(), submittedAt: Date.now(), durationMs, queryResult: safeResult };
+      // Latest fields stay top-level for backward compatibility (instructor grading, score view, etc.).
+      const newSubmission = { ...thisAttempt, attempts: [...priorAttempts, thisAttempt] };
       existingSubs[currentProblem] = newSubmission;
       localStorage.setItem(submissionKey, JSON.stringify(existingSubs));
 
       if (isPassed && user) {
         if (mode === 'ASSIGNMENT') {
-          // For ASSIGNMENT: only mark lesson COMPLETED when ALL problems are passed
           const { statusKey } = getWorkspaceKeys();
           const updatedStatuses = JSON.parse(localStorage.getItem(statusKey)) || [];
           updatedStatuses[currentProblem - 1] = 'passed';
-          const totalProblems = problems.filter(p => p.type === 'ASSIGNMENT' && p.moduleId === modId).length;
+          const totalProblems = getAllProblems().filter(p => p.type === 'ASSIGNMENT' && p.moduleId === modId).length;
           const allPassed = totalProblems > 0 && updatedStatuses.filter(s => s === 'passed').length >= totalProblems;
           if (allPassed) {
             const storageKey = `course_06070999_${user.id}_${mode}_lessons`;
@@ -309,23 +327,21 @@ export default function App() {
 
       let hints = [];
       if (!isPassed && mode !== 'EXAM') {
-        hints = new HintEngine().generateHints(code, result, problemData);
+        hints = new HintEngine().generateHints(cleanCode, result, problemData);
         if (result.success && !hasSemicolon) hints = [{ message: "Syntax Error: SQL queries must end with a semicolon (;)." }];
         setCurrentHints(hints); setHintIndex(0); setBotAlert(true); 
       } else { setBotAlert(false); }
 
-      setSubmissions([newSubmission]);
+      refreshCurrentSubmissions(currentProblem);
       setOverlay({ visible: true, status: isPassed ? 'success' : 'error' });
       setTimeout(() => {
         setOverlay({ visible: false });
         setSelectedTab('submissions');
-        // EXAM: Auto-advance to next unanswered problem after correct answer
         if (isPassed && mode === 'EXAM') {
           const totalSteps = filteredProblemsList.length;
           const { statusKey } = getWorkspaceKeys();
           const latestStatuses = JSON.parse(localStorage.getItem(statusKey)) || [];
           latestStatuses[currentProblem - 1] = 'passed';
-          // Find next unanswered problem
           for (let i = 0; i < totalSteps; i++) {
             if (latestStatuses[i] !== 'passed') {
               setCurrentProblem(i + 1);
@@ -340,77 +356,105 @@ export default function App() {
     }
   };
 
-  const handleStepChange = (newStep) => {
-    // EXAM: prevent navigating to already-passed problems (locked)
+  const handleStepChange = useCallback((newStep) => {
     const mode = localStorage.getItem('workspaceMode') || 'COURSE';
-    if (mode === 'EXAM' && problemStatuses[newStep - 1] === 'passed') {
-      return; // Cannot go back to passed exam problems
-    }
+    if (mode === 'EXAM' && problemStatuses[newStep - 1] === 'passed') return;
     if (newStep > currentProblem && problemStatuses[currentProblem - 1] !== 'passed') {
       updateProblemStatus(currentProblem - 1, 'skipped');
     }
     setCurrentProblem(newStep);
-    setSelectedTab('description'); // Always show description tab when changing problem
-  };
+    setSelectedTab('description');
+  }, [problemStatuses, currentProblem, updateProblemStatus]);
+
+  // ตรวจสอบหน้าที่ต้องการ Full-width
+  const isFullWidthPage = ['home'].includes(currentPage);
+  const isWorkspace = currentPage === 'workspace';
+  const isTeachPage = ['instructor', 'coursemanage', 'problems'].includes(currentPage);
+  // TA is bundled with instructor — both count as teaching staff.
+  const canTeach = !!user && ['instructor', 'ta'].includes(user.role);
+
+  // Locked steps (EXAM only) — memoized to keep StepIndicator from re-rendering needlessly
+  const lockedSteps = useMemo(
+    () => (workspaceMode === 'EXAM' ? problemStatuses.map((s) => s === 'passed') : []),
+    [workspaceMode, problemStatuses]
+  );
 
   if (isLoading) return <FeedbackOverlay isVisible={true} />;
 
   return (
-    <div className="min-h-screen relative font-sans text-left text-slate-900 overflow-x-hidden" style={{ fontFamily: '"Iceland", sans-serif' }}>
-      <style>{`
-          body, html { cursor: url("data:image/svg+xml,%3Csvg width='28' height='32' viewBox='0 0 28 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 4V28L11 21L16 29L21 26L16 18L24 18L4 4Z' fill='black'/%3E%3Cpath d='M0 0V24L7 17L12 25L17 22L12 14L20 14L0 0Z' fill='%23FF9900' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='5' cy='7' r='1.5' fill='white'/%3E%3C/svg%3E") 0 0, auto; }
-          button, a, select, [role="button"], .cursor-pointer { cursor: url("data:image/svg+xml,%3Csvg width='28' height='32' viewBox='0 0 28 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 4V28L11 21L16 29L21 26L16 18L24 18L4 4Z' fill='black'/%3E%3Cpath d='M0 0V24L7 17L12 25L17 22L12 14L20 14L0 0Z' fill='%23FF9900' stroke='black' stroke-width='2' stroke-linejoin='round'/%3E%3Ccircle cx='5' cy='7' r='1.5' fill='white'/%3E%3C/svg%3E") 0 0, pointer; }
-          input, textarea, .monaco-editor * { cursor: text; }
-          @keyframes soft-pulse { 0% { transform: scale(0.9); opacity: 0.8; } 50% { transform: scale(1.4); opacity: 0.2; } 100% { transform: scale(0.9); opacity: 0.8; } }
-          .animate-soft-pulse { animation: soft-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-      `}</style>
+    <div className="min-h-screen bg-[#F8F9FA] font-sans text-slate-800 selection:bg-[#FF9900]/20 overflow-x-hidden relative">
 
+      {/* Modern Session Warning Modal */}
       {showWarning && (
-        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white border-[5px] border-slate-900 shadow-[12px_12px_0px_0px_#ef4444] p-10 rounded-[32px] max-w-md w-full text-center space-y-6">
-            <div className="text-6xl animate-bounce">⚠️</div>
-            <h3 className="text-2xl font-black uppercase tracking-tighter text-slate-900">Session Expiring</h3>
-            <p className="text-slate-600 font-bold text-base leading-relaxed">ระบบจะ Logout อัตโนมัติในอีก <span className="text-red-600 font-black text-xl font-mono underline decoration-4 underline-offset-4">{countdown}</span> วินาที</p>
-            <button onClick={resetTimer} className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-sm shadow-[6px_6px_0px_0px_#ef4444] hover:translate-y-1 transition-all active:translate-y-2 active:shadow-none cursor-pointer">Stay Connected</button>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm transition-all duration-300">
+          <div className="bg-white rounded-3xl shadow-2xl p-10 max-w-sm w-full text-center space-y-6 animate-in zoom-in-95 duration-200">
+            <div className="text-5xl mb-2 flex justify-center">
+              <svg className="w-16 h-16 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h3 className="text-2xl font-bold text-[#03045e] tracking-tight">Session Expiring</h3>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              ระบบจะทำการออกจากระบบอัตโนมัติในอีก <br/>
+              <span className="text-[#ef4444] font-bold text-2xl">{countdown}</span> วินาที
+            </p>
+            <button onClick={resetTimer} className="w-full bg-[#03045e] hover:bg-[#020344] text-white py-4 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-md hover:shadow-lg mt-2">
+              Stay Connected
+            </button>
           </div>
         </div>
       )}
 
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-[#F8FAFC]"></div>
-        <div className="absolute inset-0 opacity-[0.04] bg-[size:32px_32px] bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)]"></div>
-      </div>
-
       {overlay.visible && <FeedbackOverlay isVisible={overlay.visible} />}
       {showLoginModal && !isLoggedIn && <Login onLogin={handleLogin} onClose={() => { setShowLoginModal(false); setLoginError(''); }} loginError={loginError} />}
+      
       <Header currentPage={currentPage} onNavigate={navigateTo} isLoggedIn={isLoggedIn} userData={user} onLogout={handleLogout} onLoginClick={() => setShowLoginModal(true)} />
 
-      <main className="container mx-auto px-4 py-12 relative z-10 min-h-screen">
+      {/*
+        Navbar is fixed h-20 (80px). Workspace needs extra top clearance so it
+        doesn't tuck under the navbar; other pages self-manage their own top padding.
+      */}
+      <main className={`relative z-10 min-h-[calc(100vh-80px)] pb-20 ${isWorkspace || isTeachPage ? 'pt-28 md:pt-32' : 'pt-12 md:pt-16'} ${isFullWidthPage ? 'w-full' : 'container mx-auto px-4 sm:px-6'}`}>
         {currentPage === 'home' && <Home onNavigate={navigateTo} onShowLogin={() => setShowLoginModal(true)} isLoggedIn={isLoggedIn} />}
         {isLoggedIn ? (
           <>
-            {currentPage === 'courses' && <Courses onNavigate={navigateTo} user={user} />}
             {currentPage === 'coursetext' && <CourseText onNavigate={navigateTo} user={user} />}
             {currentPage === 'dashboard' && <Dashboard onNavigate={navigateTo} user={user} />}
-            {currentPage === 'instructor' && user.role === 'instructor' && <InstructorDashboard onNavigate={navigateTo} user={user} />}
-            {currentPage === 'coursemanage' && user.role === 'instructor' && <CourseManagement onNavigate={navigateTo} />}
-            {currentPage === 'problems' && user.role === 'instructor' && <ProblemManagement onNavigate={navigateTo} />}
+            {/* instructor / coursemanage / problems all resolve to the unified console */}
+            {(currentPage === 'instructor' || currentPage === 'coursemanage' || currentPage === 'problems') && canTeach && <InstructorDashboard onNavigate={navigateTo} user={user} />}
             {currentPage === 'admin' && <AdminPanel onNavigate={navigateTo} />}
+            
+            {/* Workspace Area */}
             {currentPage === 'workspace' && problemData && (
-              <div className="animate-in fade-in zoom-in-95 duration-300 pb-32">
-                <div className="mb-10 flex items-center justify-between">
-                  <h1 className="text-4xl sm:text-5xl font-black tracking-tighter uppercase ">SQL Assignment</h1>
-                  <button onClick={() => navigateTo('coursetext')} className="bg-white border-[3px] border-slate-900 px-6 py-3 rounded-xl font-black uppercase text-xs shadow-[5px_5px_0px_0px_#000] hover:-translate-y-1 transition-all flex items-center gap-2 cursor-pointer">← Back to Lesson</button>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-32">
+                <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#03045e] text-white flex items-center justify-center shadow-[0_8px_20px_rgba(3,4,94,0.25)] shrink-0">
+                      <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div>
+                      <h1 className="text-2xl sm:text-3xl font-bold text-[#03045e] tracking-tight leading-none">
+                        SQL Assignment
+                      </h1>
+                      <p className="text-slate-400 text-[11px] sm:text-xs font-semibold mt-2 uppercase tracking-[0.15em]">
+                        {workspaceMode} Mode · Problem {currentProblem} / {filteredProblemsList.length || 1}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => navigateTo('coursetext')} className="bg-white border border-slate-200 text-[#03045e] px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:border-slate-300 hover:bg-slate-50 hover:-translate-y-0.5 active:translate-y-0 focus-visible:ring-2 focus-visible:ring-[#03045e]/30 transition-all flex items-center gap-2 shadow-sm outline-none">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Back to Lesson
+                  </button>
                 </div>
-                <StepIndicator totalSteps={filteredProblemsList.length || 1} currentStep={currentProblem} onStepChange={handleStepChange} statuses={problemStatuses} lockedSteps={workspaceMode === 'EXAM' ? problemStatuses.map(s => s === 'passed') : []} />
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 mt-10">
+
+                <StepIndicator totalSteps={filteredProblemsList.length || 1} currentStep={currentProblem} onStepChange={handleStepChange} statuses={problemStatuses} lockedSteps={lockedSteps} />
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <LeftPanel problemData={problemData} currentStep={currentProblem} />
-                  <div className="lg:col-span-2 relative z-20">
+                  <div className="lg:col-span-2 relative z-20 flex flex-col gap-6">
                     <Tabs selectedTab={selectedTab} onTabChange={setSelectedTab} />
                     {selectedTab === 'description' ? (
                       <RightPanel problemData={problemData} currentStep={currentProblem} onSubmit={handleSubmit} isExamLocked={workspaceMode === 'EXAM' && problemStatuses[currentProblem - 1] === 'passed'} />
                     ) : (
-                      <MySubmissions submissions={submissions} problemData={problemData} />
+                      <MySubmissions submissions={submissions} moduleSubs={moduleSubs} problemData={problemData} />
                     )}
                   </div>
                 </div>
@@ -422,32 +466,105 @@ export default function App() {
         )}
       </main>
 
+      {/* --- ✨ REDESIGNED AI ASSISTANT (Modern Minimal / HUD Style) ✨ --- */}
       {currentPage === 'workspace' && isLoggedIn && workspaceMode !== 'EXAM' && (
         <>
-          {isHintOpen && <div className="fixed inset-0 z-[1999] bg-slate-900/10 backdrop-blur-[2px]" onClick={() => setIsHintOpen(false)}></div>}
-          <div className="fixed bottom-10 right-10 z-[2000] flex flex-col items-end pointer-events-none" ref={hintRef}>
-            <div className={`pointer-events-auto absolute bottom-full right-0 mb-4 transition-all duration-300 origin-bottom-right ${isHintOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`}>
-              <div className="bg-white border-[5px] border-slate-900 shadow-[15px_15px_0px_0px_#000] rounded-[40px] w-[90vw] max-w-[850px] relative flex flex-col overflow-hidden">
-                <div className="bg-slate-900 text-white px-10 py-6 flex items-center border-b-[5px] border-slate-900">
-                  <h4 className="font-black text-xl uppercase tracking-[0.2em]">Agentic Intelligence SQL</h4>
-                </div>
-                <div className="p-10 bg-slate-50">
-                  <div className="p-10 bg-slate-800 border-[5px] border-slate-900 rounded-[30px] shadow-[inset_6px_6px_0px_0px_rgba(0,0,0,0.3)] min-h-[220px] flex flex-col justify-center relative">
-                    <p className="text-emerald-400 text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3 mb-4"><span className="w-3 h-3 bg-emerald-400 rounded-full animate-ping"></span>DEEP ANALYSIS: {hintIndex + 1} / {currentHints.length || 0}</p>
-                    <p className="text-xl font-bold font-mono leading-relaxed text-slate-100">{currentHints.length > 0 ? currentHints[hintIndex]?.message : "Submit query for analysis."}</p>
+          {/* Backdrop for overlay */}
+          {isHintOpen && (
+            <div className="fixed inset-0 z-[1999] bg-slate-900/10 backdrop-blur-sm transition-opacity duration-300" onClick={() => setIsHintOpen(false)}></div>
+          )}
+          
+          <div className="fixed bottom-8 right-8 z-[2000] flex flex-col items-end pointer-events-none" ref={hintRef}>
+            
+            {/* Chat Bubble / Hint Panel */}
+            <div className={`pointer-events-auto absolute bottom-[calc(100%+20px)] right-0 transition-all duration-500 ease-out origin-bottom-right ${isHintOpen ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-8 pointer-events-none'}`}>
+              <div className="bg-white rounded-[2rem] shadow-[0_30px_80px_-20px_rgba(3,4,94,0.3)] border border-slate-100 w-[90vw] max-w-[420px] overflow-hidden flex flex-col relative">
+                
+                {/* Panel Header */}
+                <div className="bg-white text-[#03045e] border-b border-slate-100 px-8 py-6 flex items-center justify-between relative overflow-hidden">
+                  <div className="flex items-center gap-4 relative z-10">
+                    <div className="w-11 h-11 bg-slate-50 rounded-full flex items-center justify-center border border-slate-200 shrink-0">
+                      <img src={botIcon} className="w-8 h-8 object-contain" alt="AI Bot" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm tracking-widest uppercase text-[#03045e] leading-tight">AI SQL Agent</h4>
+                      <p className="text-[#FF9900] text-[10px] font-medium uppercase tracking-[0.2em] mt-1">Analysis Engine</p>
+                    </div>
                   </div>
+                  <button onClick={() => setIsHintOpen(false)} className="relative z-10 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+                  </button>
+                </div>
+                
+                {/* Panel Body */}
+                <div className="p-8 bg-[#FAFAFA] flex flex-col min-h-[260px]">
+                  {currentHints.length > 0 ? (
+                    <div className="flex-1 flex flex-col animate-in fade-in duration-300">
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#03045e]/5 border border-[#03045e]/10 mb-6 self-start">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#FF9900] animate-pulse"></span>
+                        <span className="text-[#03045e] text-[10px] font-bold uppercase tracking-widest">
+                          Insight {hintIndex + 1} of {currentHints.length}
+                        </span>
+                      </div>
+                      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex-1">
+                        <p className="text-[15px] font-medium text-slate-700 leading-relaxed">
+                          {currentHints[hintIndex]?.message}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center flex-1 text-slate-400 gap-4">
+                      <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center">
+                        <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                      </div>
+                      <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Waiting for query...</p>
+                    </div>
+                  )}
+                  
+                  {/* Panel Controls */}
                   {currentHints.length > 1 && (
-                    <div className="flex gap-6 mt-8">
-                      <button onClick={(e) => { e.stopPropagation(); setHintIndex(prev => Math.max(0, prev - 1)); }} className="flex-1 bg-white border-[4px] border-slate-900 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-[6px_6px_0px_0px_#000] hover:translate-y-1 transition-all cursor-pointer">Previous</button>
-                      <button onClick={(e) => { e.stopPropagation(); setHintIndex(prev => Math.min(currentHints.length - 1, prev + 1)); }} className="flex-1 bg-slate-900 text-white border-[4px] border-slate-900 py-4 rounded-2xl font-black uppercase text-sm tracking-widest shadow-[6px_6px_0px_0px_#FF9900] hover:translate-y-1 transition-all cursor-pointer">Next</button>
+                    <div className="flex gap-4 mt-8 pt-6 border-t border-slate-100">
+                      <button 
+                        disabled={hintIndex === 0}
+                        onClick={(e) => { e.stopPropagation(); setHintIndex(prev => Math.max(0, prev - 1)); }} 
+                        className="flex-1 bg-white border border-slate-200 text-[#03045e] py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                      >
+                        Previous
+                      </button>
+                      <button 
+                        disabled={hintIndex === currentHints.length - 1}
+                        onClick={(e) => { e.stopPropagation(); setHintIndex(prev => Math.min(currentHints.length - 1, prev + 1)); }} 
+                        className="flex-1 bg-[#03045e] text-white border border-[#03045e] py-3.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-[#020344] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md"
+                      >
+                        Next
+                      </button>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            <button onClick={(e) => { e.stopPropagation(); setIsHintOpen(!isHintOpen); setBotAlert(false); }} className={`pointer-events-auto cursor-pointer relative w-32 h-32 rounded-[40px] border-[6px] border-slate-900 flex items-center justify-center bg-white transition-all transform hover:-translate-y-2 ${isHintOpen ? 'translate-y-2 shadow-none' : 'shadow-[12px_12px_0px_0px_rgba(15,23,42,1)]'}`}>
-              {botAlert && <div className="absolute -top-3 -left-3 z-50 w-10 h-10 bg-[#ef4444] text-white rounded-full border-[4px] border-[#1e293b] flex items-center justify-center shadow-lg"><span className="font-black text-xl">!</span></div>}
-              <img src={botIcon} alt="Bot" className="w-full h-full object-contain p-3" />
+
+            {/* Floating Action Button (Clean / Elegant) */}
+            <button 
+              onClick={(e) => { e.stopPropagation(); setIsHintOpen(!isHintOpen); setBotAlert(false); }} 
+              className={`pointer-events-auto relative w-16 h-16 md:w-[72px] md:h-[72px] rounded-full flex items-center justify-center transition-all duration-500 ease-out z-10
+                ${isHintOpen
+                  ? 'bg-white border border-slate-200 scale-90 shadow-sm hover:bg-slate-50'
+                  : 'bg-white border border-slate-200 shadow-[0_15px_40px_-10px_rgba(0,0,0,0.18)] hover:shadow-[0_20px_50px_-10px_rgba(0,0,0,0.28)] hover:-translate-y-1'
+                }`}
+            >
+              {/* Alert Indicator (Glowing Dot) */}
+              {botAlert && !isHintOpen && (
+                <>
+                  <span className="absolute inset-0 rounded-full animate-ping bg-[#FF9900] opacity-40 duration-1000"></span>
+                  <span className="absolute top-0 right-0 md:top-1 md:right-1 w-4 h-4 bg-[#FF9900] border-2 border-[#03045e] rounded-full z-20"></span>
+                </>
+              )}
+              <img 
+                src={botIcon} 
+                alt="AI Agent" 
+                className={`w-9 h-9 md:w-11 md:h-11 object-contain transition-all duration-500 ${isHintOpen ? 'opacity-60' : ''}`}
+              />
             </button>
           </div>
         </>

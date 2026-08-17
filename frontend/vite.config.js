@@ -12,7 +12,15 @@ export default defineConfig({
     open: true,
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-    }
+    },
+    // Proxy API calls to the FastAPI backend during local dev so relative
+    // '/api/...' fetches (e.g. /api/auth/ldap-login) reach it.
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:8000',
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     // ═══ Content-Hash Filenames for Cache Busting ═══

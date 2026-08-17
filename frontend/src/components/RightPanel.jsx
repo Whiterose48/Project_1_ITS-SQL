@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
+import { examLockState } from '../lib/instructor-store';
 
 const SQL_KEYWORDS = [
   { label: 'SELECT', kind: 'Keyword', insertText: 'SELECT', detail: 'เลือกคอลัมน์ที่ต้องการแสดงผล' },
@@ -47,9 +48,8 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   const [code, setCode] = useState('-- Write your SQL query here --');
   const [isRunning, setIsRunning] = useState(false);
   const editorRef = useRef(null);
-
-  // ✨ สร้าง state เพื่อเก็บสถานะว่าเวลาหมดหรือยัง
   const [isTimeUp, setIsTimeUp] = useState(false);
+  const [examGate, setExamGate] = useState({ reason: null, remainingMs: null });
 
   const getStorageKey = () => {
     const mode = localStorage.getItem('workspaceMode') || 'COURSE';
@@ -57,29 +57,39 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
     return `saved_code_${mode}_${modId}_step_${currentStep}`;
   };
 
-  // ✨ เช็คเวลาตลอดเวลา ถ้าเป็นโหมด EXAM แล้วเวลาเกิน 1 ชม. ให้ล็อคหน้าจอ!
+  // Exam gating — instructor schedule (open / close / time limit) takes priority;
+  // falls back to the legacy fixed 60-minute limit when no schedule is set.
   useEffect(() => {
-    const mode = localStorage.getItem('workspaceMode');
-    if (mode !== 'EXAM') return;
+    const LEGACY_DURATION = 60 * 60 * 1000;
+    const evaluate = () => {
+      const mode = localStorage.getItem('workspaceMode');
+      if (mode !== 'EXAM') { setIsTimeUp(false); setExamGate({ reason: null, remainingMs: null }); return; }
 
-    const EXAM_DURATION = 60 * 60 * 1000;
-    const modId = localStorage.getItem('workspaceModule');
-    const userData = sessionStorage.getItem('userData');
-    const userId = userData ? JSON.parse(userData).id : 'guest';
-    const startTime = localStorage.getItem(`exam_start_${userId}_${modId}`);
+      const modId = localStorage.getItem('workspaceModule');
+      const userData = sessionStorage.getItem('userData');
+      const userId = userData ? JSON.parse(userData).id : 'guest';
+      const startedAt = parseInt(localStorage.getItem(`exam_start_${userId}_${modId}`)) || null;
 
-    const checkTime = () => {
-        if (startTime) {
-            if (Date.now() - parseInt(startTime) >= EXAM_DURATION) {
-                setIsTimeUp(true);
-            }
-        }
+      const st = examLockState(modId, startedAt);
+      if (st.cfg) {
+        setExamGate({ reason: st.reason, remainingMs: st.remainingMs });
+        setIsTimeUp(st.reason === 'time_up');
+        return;
+      }
+      // No instructor schedule → legacy fixed 60-minute limit.
+      if (startedAt) {
+        const remainingMs = startedAt + LEGACY_DURATION - Date.now();
+        setExamGate({ reason: remainingMs <= 0 ? 'time_up' : null, remainingMs: Math.max(0, remainingMs) });
+        setIsTimeUp(remainingMs <= 0);
+      } else {
+        setExamGate({ reason: null, remainingMs: null });
+        setIsTimeUp(false);
+      }
     };
-    
-    checkTime();
-    const interval = setInterval(checkTime, 1000);
+    evaluate();
+    const interval = setInterval(evaluate, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [problemData, currentStep]);
 
   useEffect(() => {
     if (!problemData) return;
@@ -137,7 +147,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   };
 
   const handleRunQuery = async () => {
-    if (isRunning || isTimeUp || isExamLocked) return;
+    if (isRunning || lockedAny) return;
     setIsRunning(true);
     try {
       if (typeof onSubmit === 'function') {
@@ -151,7 +161,7 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
   };
 
   const handleResetCode = () => {
-    if (isTimeUp || isExamLocked) return;
+    if (lockedAny) return;
     if(window.confirm('Are you sure you want to reset your code? This cannot be undone.')) {
       const defaultCode = '-- Write your SQL query here --';
       setCode(defaultCode);
@@ -159,42 +169,86 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
     }
   };
 
+  // Derived lock state. `hardLock` = red, blocks work (time up / not open / closed).
+  // `isExamLocked` (green) = already submitted a correct answer.
+  const scheduleBlocked = examGate.reason === 'not_open' || examGate.reason === 'closed';
+  const hardLock = isTimeUp || scheduleBlocked;
+  const lockedAny = hardLock || isExamLocked;
+  const lockLabel = examGate.reason === 'not_open' ? 'Exam Not Open'
+    : examGate.reason === 'closed' ? 'Exam Closed'
+    : 'Time is Up';
+  const showCountdown = !lockedAny && typeof examGate.remainingMs === 'number' && examGate.remainingMs > 0;
+  const countdown = (() => {
+    const t = Math.max(0, Math.floor((examGate.remainingMs || 0) / 1000));
+    return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  })();
+
   return (
-    <div className="space-y-6 relative z-10">
-      <div className="bg-[#0f172a] rounded-[24px] overflow-hidden border-[4px] border-slate-900 shadow-[8px_8px_0px_0px_#1e293b] flex flex-col">
-        <div className={`bg-slate-800 text-white px-6 py-4 flex items-center justify-between border-b-[4px] border-slate-900 shrink-0 transition-colors ${isTimeUp ? 'bg-red-900/50' : ''} ${isExamLocked ? 'bg-emerald-900/50' : ''}`}>
+    <div className="flex flex-col space-y-6 w-full relative z-10">
+      
+      {/* Editor Card */}
+      <div className="bg-[#0e1117] rounded-3xl overflow-hidden border border-slate-700/60 shadow-[0_8px_30px_rgb(0,0,0,0.12)] flex flex-col">
+        
+        {/* Header Bar */}
+        <div className={`px-5 py-3.5 flex items-center justify-between border-b border-slate-800 transition-colors duration-300
+          ${hardLock ? 'bg-rose-950/30' : isExamLocked ? 'bg-emerald-950/30' : 'bg-[#161b22]'}`}
+        >
           <div className="flex items-center gap-4">
+            {/* Window Controls (Mac Style) */}
             <div className="flex gap-2">
-              <div className="w-3.5 h-3.5 bg-red-500 border-2 border-slate-900 rounded-sm"></div>
-              <div className="w-3.5 h-3.5 bg-yellow-400 border-2 border-slate-900 rounded-sm"></div>
-              <div className="w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-sm"></div>
+              <div className="w-3 h-3 bg-[#ff5f56] rounded-full"></div>
+              <div className="w-3 h-3 bg-[#ffbd2e] rounded-full"></div>
+              <div className="w-3 h-3 bg-[#27c93f] rounded-full"></div>
             </div>
-            <h3 className="text-lg font-black tracking-widest ml-2 font-mono uppercase text-slate-200">
-              Query Editor {isTimeUp && <span className="text-red-400 ml-2 animate-pulse">(LOCKED)</span>}
-              {isExamLocked && <span className="text-emerald-400 ml-2">(SUBMITTED ✓)</span>}
-            </h3>
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-300">
+              <span className="font-mono text-slate-400">query.sql</span>
+              {showCountdown && <span className="text-amber-400 text-xs px-2 py-0.5 rounded-full bg-amber-400/10 border border-amber-400/20 font-mono tabular-nums">{countdown} left</span>}
+              {hardLock && <span className="text-rose-400 text-xs px-2 py-0.5 rounded-full bg-rose-400/10 border border-rose-400/20 animate-pulse">{examGate.reason === 'not_open' ? 'NOT OPEN' : examGate.reason === 'closed' ? 'CLOSED' : 'LOCKED'}</span>}
+              {isExamLocked && <span className="text-emerald-400 text-xs px-2 py-0.5 rounded-full bg-emerald-400/10 border border-emerald-400/20">SUBMITTED</span>}
+            </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button 
               onClick={handleResetCode}
-              disabled={isTimeUp}
-              className={`font-bold text-xs uppercase tracking-widest transition-colors mr-2 ${isTimeUp ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-red-400 cursor-pointer'}`}
+              disabled={lockedAny}
+              className={`text-xs font-medium transition-colors flex items-center gap-1
+                ${lockedAny ? 'text-slate-600 cursor-not-allowed' : 'text-slate-400 hover:text-rose-400 cursor-pointer'}`}
             >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+              </svg>
               Reset
             </button>
-            <span className={`${isTimeUp ? 'bg-red-600' : 'bg-blue-600'} px-3 py-1 rounded-md border-[3px] border-slate-900 text-xs font-black uppercase tracking-widest shadow-[3px_3px_0px_0px_#020617]`}>
+            <span className="bg-[#0ea5e9]/10 text-[#0ea5e9] px-2.5 py-1 rounded-md text-[11px] font-bold tracking-wider uppercase border border-[#0ea5e9]/20">
               SQL
             </span>
           </div>
         </div>
         
-        <div className="h-[450px] w-full relative bg-[#1e1e1e]">
-          {(isTimeUp || isExamLocked) && (
-             <div className="absolute inset-0 z-50 bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center">
-                 {isExamLocked && <span className="bg-emerald-500 text-white font-black text-sm uppercase tracking-widest px-6 py-3 rounded-xl border-[3px] border-emerald-700 shadow-[4px_4px_0px_0px_#064e3b]">✓ คำตอบถูกต้อง - ส่งเเล้ว</span>}
-             </div>
+        {/* Editor Area */}
+        <div className="h-[300px] sm:h-[360px] lg:h-[400px] w-full relative bg-[#0d1117]">
+          {/* Overlay Lock */}
+          {lockedAny && (
+            <div className="absolute inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center transition-all duration-500">
+              {isExamLocked ? (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium text-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg shadow-emerald-500/10">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  คำตอบถูกต้อง - ส่งแล้ว
+                </div>
+              ) : (
+                <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 font-medium text-sm px-6 py-3 rounded-2xl flex items-center gap-3 shadow-lg shadow-rose-500/10">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                  {lockLabel}
+                </div>
+              )}
+            </div>
           )}
+          
           <Editor
             height="100%"
             width="100%"
@@ -204,59 +258,72 @@ export default function RightPanel({ problemData, currentStep, onStepChange, onS
             onMount={handleEditorMount}
             theme="vs-dark"
             loading={
-              <div className="flex h-full w-full items-center justify-center text-emerald-400 font-mono font-bold animate-pulse text-base">
-                Initializing Database Editor...
+              <div className="flex h-full w-full items-center justify-center text-slate-400 font-mono text-sm">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-[#0ea5e9]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Initializing Editor...
               </div>
             }
             options={{
               minimap: { enabled: false },
-              fontSize: 16,
-              fontFamily: '"Fira Code", "JetBrains Mono", monospace',
-              padding: { top: 24, bottom: 24 },
+              fontSize: 13,
+              fontFamily: '"Fira Code", "JetBrains Mono", "Menlo", monospace',
+              padding: { top: 16, bottom: 16 },
               scrollBeyondLastLine: false,
-              lineHeight: 24,
+              lineHeight: 20,
               wordBasedSuggestions: 'off',
               suggest: { showWords: false },
-              scrollbar: { alwaysConsumeMouseWheel: false },
+              scrollbar: { alwaysConsumeMouseWheel: false, verticalScrollbarSize: 8 },
               fixedOverflowWidgets: true,
-              readOnly: isTimeUp || isExamLocked, // ✨ ล็อคไม่ให้พิมพ์เพิ่มได้ถ้าเวลาหมดหรือข้อสอบผ่านเเล้ว
+              readOnly: lockedAny,
             }}
           />
         </div>
       </div>
 
-      {/* ✨ เปลี่ยนปุ่มเป็นปุ่ม "หมดเวลา" ถ้าครบ 1 ชั่วโมง */}
+      {/* Action Button */}
       <button
         onClick={handleRunQuery}
-        disabled={isRunning || isTimeUp || isExamLocked}
-        className={`relative z-10 w-full flex items-center justify-center gap-3 py-6 font-black text-lg tracking-widest uppercase transition-all duration-150 rounded-[20px] border-[4px] border-slate-900 text-white 
+        disabled={isRunning || lockedAny}
+        className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-semibold text-base transition-all duration-300
           ${isExamLocked
-            ? 'bg-emerald-600 shadow-[8px_8px_0px_0px_#064e3b] cursor-not-allowed opacity-90'
-            : isTimeUp 
-            ? 'bg-red-600 shadow-[8px_8px_0px_0px_#7f1d1d] cursor-not-allowed opacity-90' 
-            : 'bg-blue-600 shadow-[8px_8px_0px_0px_#000066] hover:-translate-y-1 hover:shadow-[10px_10px_0px_0px_#000066] active:translate-y-[4px] active:translate-x-[4px] active:shadow-none cursor-pointer'
+            ? 'bg-emerald-50 text-emerald-500 border border-emerald-200 cursor-not-allowed shadow-sm'
+            : hardLock
+            ? 'bg-rose-50 text-rose-500 border border-rose-200 cursor-not-allowed shadow-sm'
+            : 'bg-[#03045e] text-white hover:bg-[#020344] hover:shadow-[0_8px_20px_rgba(3,4,94,0.25)] hover:-translate-y-0.5 active:translate-y-0 cursor-pointer shadow-md'
           }
         `}
       >
         {isExamLocked ? (
           <>
-            <span className="text-2xl drop-shadow-md">✓</span>
-            <span className="drop-shadow-md pointer-events-none">Already Submitted</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Already Submitted
           </>
-        ) : isTimeUp ? (
+        ) : hardLock ? (
           <>
-            <span className="text-2xl drop-shadow-md">🔒</span>
-            <span className="drop-shadow-md pointer-events-none">TIME IS UP</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+            </svg>
+            {lockLabel}
           </>
         ) : isRunning ? (
-          <div className="flex items-center gap-3 pointer-events-none">
-            <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
-            <span>Submitting...</span>
-          </div>
+          <>
+            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Submitting...
+          </>
         ) : (
           <>
-            <span className="text-2xl drop-shadow-md pointer-events-none">▶</span>
-            <span className="drop-shadow-md pointer-events-none">Submit Answer</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+            </svg>
+            Submit Answer
           </>
         )}
       </button>

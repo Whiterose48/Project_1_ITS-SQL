@@ -1,83 +1,82 @@
 import React from 'react';
 
-export default function StepIndicator({ totalSteps = 5, currentStep, onStepChange, statuses = [], lockedSteps = [] }) {
+function StepIndicator({ totalSteps = 5, currentStep, onStepChange, statuses = [], lockedSteps = [] }) {
   return (
-    <div className="flex items-center justify-center my-10 py-10 bg-slate-50 rounded-xl border-[3px] border-slate-200 relative overflow-x-auto px-6">
+    // 1. ตัวกรอบนอกสุด กำหนดให้อยู่แค่ในความกว้าง 100% เสมอ
+    <div className="w-full mb-8 bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.03)] border border-slate-100 overflow-hidden">
       
-      <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-
-      <div className="flex items-center z-10 min-w-max">
-        {Array.from({ length: totalSteps }).map((_, index) => {
-          const step = index + 1;
-          const isActive = step === currentStep;
-          const status = statuses[index];
-          const isLocked = lockedSteps[index] === true;
-          const isLast = step === totalSteps;
-
-          const baseStyles = "relative w-12 h-12 rounded-lg font-black text-lg flex items-center justify-center border-[3px] font-mono transition-all duration-200 shrink-0 select-none";
+      {/* 2. พื้นที่สำหรับการ Scroll ซ้าย-ขวา เวลาที่ข้อเยอะเกินขอบจอ */}
+      <div className="w-full overflow-x-auto custom-scrollbar">
+        
+        {/* 3. เทคนิค Flexbox เพื่อจัดให้อยู่ตรงกลางเมื่อจอใหญ่ และเริ่มจากซ้ายเมื่อจอเล็ก (ป้องกันบั๊กโดนตัดขอบซ้าย) */}
+        <div className="flex items-center justify-center w-max min-w-full px-6 py-8 sm:py-10">
           
-          let stepClasses = "";
-          let stepShadow = ""; 
+          {Array.from({ length: totalSteps }).map((_, index) => {
+            const step = index + 1;
+            const isActive = step === currentStep;
+            const status = statuses[index];
+            const isLocked = lockedSteps[index] === true;
+            const isLast = step === totalSteps;
 
-          if (isLocked && !isActive) {
-            // Locked exam step (passed + locked) - green with lock appearance
-            stepClasses = "bg-[#4ade80] text-[#064e3b] border-[#166534] opacity-75 cursor-not-allowed";
-            stepShadow = "4px 4px 0px 0px #14532d";
-          } else if (isActive) {
-            stepClasses = "bg-[#000033] text-white border-[#00001a] cursor-pointer";
-            stepShadow = "4px 4px 0px 0px #00001a";
-          } else if (status === 'passed') {
-            stepClasses = "bg-[#4ade80] text-[#064e3b] border-[#166534] cursor-pointer";
-            stepShadow = "4px 4px 0px 0px #14532d";
-          } else if (status === 'failed') {
-            stepClasses = "bg-[#ef4444] text-white border-[#991b1b] cursor-pointer";
-            stepShadow = "4px 4px 0px 0px #7f1d1d";
-          } else if (step < currentStep) {
-            stepClasses = "bg-[#facc15] text-[#854d0e] border-[#92400e] cursor-pointer";
-            stepShadow = "4px 4px 0px 0px #78350f";
-          } else {
-            stepClasses = "bg-white text-slate-400 border-slate-300 cursor-pointer";
-            stepShadow = "4px 4px 0px 0px #cbd5e1";
-          }
+            // ปรับขนาดวงกลมให้พอดีมือถือมากขึ้น (w-10 h-10) และป้องกันการโดนบีบด้วย shrink-0
+            const baseStyles = "relative w-10 h-10 sm:w-12 sm:h-12 rounded-full font-bold text-sm flex items-center justify-center transition-all duration-300 shrink-0 select-none outline-none focus-visible:ring-4 focus-visible:ring-[#03045e]/30";
+            
+            let stepClasses = "";
+            let iconOrText = step;
 
-          return (
-            <React.Fragment key={step}>
-              <button
-                onClick={() => !isLocked && onStepChange(step)}
-                disabled={isLocked}
-                className={`${baseStyles} ${stepClasses} ${isLocked ? '' : 'hover:-translate-y-1 hover:-translate-x-1 active:translate-y-[2px] active:translate-x-[2px] active:shadow-none'}`}
-                style={{ boxShadow: stepShadow }}
-                title={isLocked ? 'ข้อนี้ถูกล็อคเเล้ว (ส่งคำตอบถูกต้อง)' : ''}
-              >
-                {isLocked ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                  </svg>
-                ) : status === 'passed' && !isActive ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={5} stroke="currentColor" className="w-7 h-7">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                ) : (
-                  step
+            if (isLocked && !isActive) {
+              stepClasses = "bg-emerald-50 text-emerald-600 border-2 border-emerald-200 cursor-not-allowed opacity-80";
+              iconOrText = (
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              );
+            } else if (isActive) {
+              stepClasses = "bg-[#03045e] text-white ring-4 ring-[#03045e]/20 shadow-lg scale-110 cursor-default";
+            } else if (status === 'passed') {
+              stepClasses = "bg-emerald-500 text-white ring-4 ring-emerald-500/20 shadow-md hover:bg-emerald-600 hover:-translate-y-0.5 cursor-pointer";
+              iconOrText = (
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              );
+            } else if (status === 'failed') {
+              stepClasses = "bg-rose-500 text-white ring-4 ring-rose-500/20 shadow-md hover:bg-rose-600 hover:-translate-y-0.5 cursor-pointer";
+            } else if (step < currentStep) {
+              stepClasses = "bg-amber-100 text-amber-600 border-2 border-amber-200 hover:bg-amber-200 hover:-translate-y-0.5 cursor-pointer";
+            } else {
+              stepClasses = "bg-white text-slate-400 border-2 border-slate-200 hover:border-[#03045e]/50 hover:text-[#03045e] shadow-sm hover:-translate-y-0.5 cursor-pointer";
+            }
+
+            const lineClass = status === 'passed' 
+              ? "bg-emerald-400" 
+              : (isActive || step < currentStep) ? "bg-[#03045e]/20" : "bg-slate-200";
+
+            return (
+              <React.Fragment key={step}>
+                <button
+                  onClick={() => !isLocked && !isActive && onStepChange(step)}
+                  disabled={isLocked || isActive}
+                  className={`${baseStyles} ${stepClasses}`}
+                  title={isLocked ? 'ข้อนี้ถูกล็อคเเล้ว (ส่งคำตอบถูกต้อง)' : `ไปยังข้อที่ ${step}`}
+                >
+                  {iconOrText}
+                </button>
+
+                {!isLast && (
+                  // ปรับความกว้างของเส้นให้อยู่ตรงกลางอย่างสวยงาม
+                  <div className="flex items-center px-1.5 sm:px-2">
+                    <div className={`w-6 sm:w-12 h-1 rounded-full transition-colors duration-500 ${lineClass}`} />
+                  </div>
                 )}
-              </button>
+              </React.Fragment>
+            );
+          })}
 
-              {!isLast && (
-                <div className="flex items-center">
-                  <div 
-                    className={`w-10 h-4 border-y-[3px] transition-colors duration-300 ${
-                      status === 'passed' ? 'bg-[#4ade80] border-[#166534]' : 'bg-slate-200 border-slate-300'
-                    }`}
-                    style={{ 
-                      boxShadow: status === 'passed' ? '0px 3px 0px 0px #14532d' : '0px 3px 0px 0px #cbd5e1'
-                    }}
-                  />
-                </div>
-              )}
-            </React.Fragment>
-          );
-        })}
+        </div>
       </div>
     </div>
   );
 }
+
+export default React.memo(StepIndicator);
