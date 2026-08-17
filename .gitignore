@@ -1,23 +1,42 @@
-# ── Secrets / environment ──
+# ═══ Secrets / environment ═══
 .env
 .env.*
 !.env.example
 backend/.env
 !backend/.env.example
 
-# ── Python ──
+# ═══ Python ═══
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
 .venv/
 venv/
+env/
+.pytest_cache/
+.mypy_cache/
 
-# ── Logs ──
+# ═══ Node / Vite / frontend build ═══
+node_modules/
+.vite/
+**/.vite/
+frontend/dist/
+dist/
+*.local
+
+# ═══ Logs ═══
 logs/
 *.log
 
-# ── Node ──
-node_modules/
+# ═══ Databases ═══
+# backend/its_sql.db is committed on purpose (seed data) — NOT ignored.
+*.sqlite
+*.sqlite3
+*.db-journal
 
-# ── OS ──
+# ═══ OS / editor ═══
 .DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
